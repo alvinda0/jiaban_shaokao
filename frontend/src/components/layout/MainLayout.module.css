@@ -1,0 +1,25 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: #E8E8E8;
+  color: #1F1F1F;
+}
+
+.mainArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 20px 16px;
+  }
+}

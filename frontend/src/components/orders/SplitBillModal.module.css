@@ -1,0 +1,528 @@
+/* Overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  z-index: 9999;
+  padding: 0;
+}
+
+/* Modal */
+.modal {
+  background: #F5F5F5;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  background: white;
+  border-bottom: 2px solid #000;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 4px 0 0 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.closeBtn:hover {
+  background: #f5f5f5;
+}
+
+/* Content */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+  background: #F5F5F5;
+}
+
+/* Total Info */
+.totalInfo {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 15px;
+}
+
+.infoRow:not(:last-child) {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.amount {
+  font-weight: 600;
+  color: #000;
+}
+
+.amountPaid {
+  font-weight: 600;
+  color: #10b981;
+}
+
+.amountRemaining {
+  font-weight: 700;
+  color: #dc2626;
+  font-size: 16px;
+}
+
+/* Section */
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #000;
+  font-size: 14px;
+}
+
+.hint {
+  font-size: 13px;
+  color: #666;
+  margin-top: 8px;
+}
+
+/* Method Buttons */
+.methodButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.methodBtn {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e5e5e5;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.methodBtn:hover {
+  border-color: #000;
+}
+
+.methodBtn.active {
+  background: #000;
+  color: white;
+  border-color: #000;
+}
+
+/* Add Split Button */
+.btnAddSplit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 2px solid #000;
+  background: white;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnAddSplit:hover {
+  background: #000;
+  color: white;
+}
+
+/* Splits */
+.splits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.splitCard {
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 20px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.splitCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.splitHeader {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.splitLabelInput {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  background: white;
+}
+
+.splitLabelInput:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.btnRemove {
+  padding: 10px;
+  border: 2px solid #dc2626;
+  background: white;
+  color: #dc2626;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btnRemove:hover {
+  background: #dc2626;
+  color: white;
+}
+
+/* Amount Input */
+.amountInput {
+  margin-bottom: 16px;
+}
+
+.amountInput label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 15px;
+  background: white;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #000;
+}
+
+/* Item Selection */
+.itemSelection label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.itemCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.itemCheckbox:hover {
+  border-color: #000;
+}
+
+.itemCheckbox.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.itemCheckbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.itemCheckbox.disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.itemInfo {
+  flex: 1;
+}
+
+.itemPrice {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.assignedBadge {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Split Totals */
+.splitTotals {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e5e5e5;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.totalRowGrand {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  margin-top: 8px;
+  border-top: 2px solid #e5e5e5;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+}
+
+/* Grand Total */
+.grandTotal {
+  background: #000;
+  color: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.grandTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.grandTotalAmount {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.validationMessage {
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.valid {
+  color: #10b981;
+}
+
+.invalid {
+  color: #fca5a5;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  gap: 16px;
+  padding: 24px 32px;
+  background: white;
+  border-top: 2px solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.btnCancel {
+  flex: 1;
+  padding: 14px 24px;
+  border: 2px solid #000;
+  background: white;
+  color: #000;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+}
+
+.btnCancel:hover {
+  background: #f5f5f5;
+}
+
+.btnSubmit {
+  flex: 2;
+  padding: 14px 24px;
+  border: none;
+  background: #000;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+}
+
+.btnSubmit:hover:not(:disabled) {
+  background: #333;
+}
+
+.btnSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* View Split Bills Modal Specific */
+.splitTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+}
+
+.splitSubtitle {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.statusBadge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.statusPaid {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.statusUnpaid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.discount {
+  color: #dc2626;
+}
+
+.billItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+}
+
+.itemMeta {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.paidInfo {
+  margin-top: 12px;
+  padding: 10px;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.btnPayBill {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #059669;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnPayBill:hover {
+  background: #047857;
+}

@@ -1,0 +1,89 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  min-height: 100vh;
+  background: #FFFFFF;
+  border-right: 1px solid #000000;
+  padding: 0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-shadow: 4px 0 12px rgba(239, 68, 68, 0.15);
+}
+
+/* Sidebar Header with Brand */
+.sidebarHeader {
+  padding: 0 20px;
+  border-bottom: 1px solid #000000;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandIcon {
+  font-size: 22px;
+}
+
+.brandName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.3px;
+}
+
+/* Nav */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #737373;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.navItem:hover {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+.navItemActive {
+  background: #FEE2E2;
+  color: #EF4444;
+}
+
+.navItemActive:hover {
+  background: #FECACA;
+  color: #EF4444;
+}
+
+.navIcon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.navLabel {
+  flex: 1;
+}

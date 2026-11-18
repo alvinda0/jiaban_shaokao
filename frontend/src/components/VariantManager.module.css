@@ -1,0 +1,313 @@
+.container {
+  margin-top: 20px;
+  padding: 16px;
+  background: #1a1d2e;
+  border-radius: 8px;
+  border: 1px solid #000000;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.btnAdd {
+  padding: 6px 12px;
+  background: #EF4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnAdd:hover {
+  background: #DC2626;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: #888;
+  border: 1px dashed #444;
+  border-radius: 6px;
+}
+
+.empty p {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+}
+
+.empty small {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Group */
+.group {
+  margin-top: 12px;
+  padding: 12px;
+  background: #252941;
+  border-radius: 6px;
+  border: 1px solid #333858;
+}
+
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.btnCollapse {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btnCollapse:hover {
+  background: #333;
+}
+
+.inputGroupName {
+  flex: 1;
+  padding: 8px 12px;
+  background: #1a1d2e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.inputGroupName::placeholder {
+  color: #666;
+}
+
+.groupActions {
+  display: flex;
+  gap: 4px;
+}
+
+.btnIcon {
+  padding: 6px 10px;
+  background: #333;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btnIcon:hover:not(:disabled) {
+  background: #444;
+}
+
+.btnIcon:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btnRemove {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnRemove:hover {
+  background: #d32f2f;
+}
+
+/* Group Settings */
+.groupSettings {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #1a1d2e;
+  border-radius: 6px;
+}
+
+.checkboxInline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxInline input {
+  cursor: pointer;
+}
+
+.checkboxInline span {
+  font-size: 13px;
+  color: #ccc;
+}
+
+.selectField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selectField label {
+  font-size: 13px;
+  color: #ccc;
+}
+
+.selectField select {
+  padding: 6px 10px;
+  background: #252941;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Options */
+.optionsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.optionsLabel {
+  font-size: 13px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.btnAddOption {
+  padding: 4px 10px;
+  background: #2d3250;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #EF4444;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnAddOption:hover {
+  background: #333858;
+}
+
+.emptyOptions {
+  padding: 16px;
+  text-align: center;
+  color: #666;
+  font-size: 12px;
+  border: 1px dashed #333;
+  border-radius: 4px;
+}
+
+.option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #1a1d2e;
+  border-radius: 6px;
+  border: 1px solid #000000;
+}
+
+.optionInputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.inputOptionName {
+  flex: 1;
+  padding: 8px 12px;
+  background: #252941;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+}
+
+.inputOptionName::placeholder {
+  color: #666;
+}
+
+.inputPrice {
+  width: 100px;
+  padding: 8px 12px;
+  background: #252941;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+  text-align: right;
+}
+
+.inputPrice::placeholder {
+  color: #666;
+}
+
+.priceLabel {
+  min-width: 80px;
+  font-size: 12px;
+  color: #EF4444;
+  font-weight: 500;
+}
+
+.btnRemoveOption {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  color: #d32f2f;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.btnRemoveOption:hover {
+  background: #d32f2f;
+  color: white;
+}
+
+/* Hint */
+.hint {
+  margin-top: 12px;
+  padding: 10px;
+  background: #2d3250;
+  border-left: 3px solid #4A90E2;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #aaa;
+}

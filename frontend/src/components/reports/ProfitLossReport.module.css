@@ -1,0 +1,284 @@
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.filterBar {
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 0.75rem;
+}
+
+.filterSection {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filterSection > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filterSection label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+}
+
+.dateRange {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.refreshBtn {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.refreshBtn:hover {
+  background: #2563eb;
+}
+
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  color: white;
+}
+
+.card.revenue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.card.cogs {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.card.profit {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.card.netProfit {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  margin-bottom: 0.5rem;
+}
+
+.value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.subtext {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+/* TAB LAYOUT */
+.mainTabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  overflow-x: auto;
+  margin-top: 1.5rem;
+}
+
+.subTabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  background: none;
+  color: #6b7280;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+  top: 1px;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: #1f2937;
+}
+
+.tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+.tabContent {
+  min-height: 300px;
+}
+
+.content {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+}
+
+.content h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  color: #1f2937;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.metric.highlight {
+  background: #f0fdf4;
+  font-weight: 600;
+  border: 1px solid #bbf7d0;
+}
+
+.metric.positive {
+  color: #15803d;
+}
+
+.metric.negative {
+  color: #dc2626;
+}
+
+.metric span:last-child {
+  font-weight: 600;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table thead {
+  background: #f3f4f6;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem;
+  text-align: right;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.name {
+  max-width: 200px;
+  word-break: break-word;
+}
+
+.table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.positive {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.negative {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.loading,
+.error {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: #dc2626;
+  background: #fee2e2;
+  border-radius: 0.75rem;
+}
+
+.error button {
+  padding: 0.5rem 1rem;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  align-self: center;
+}
+
+.error button:hover {
+  background: #b91c1c;
+}

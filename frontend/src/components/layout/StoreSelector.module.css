@@ -1,0 +1,149 @@
+.wrapper {
+  position: relative;
+  margin: 0 12px 8px;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: #FFFFFF;
+  border: 1px solid #000000;
+  border-radius: 10px;
+  color: #525252;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+}
+
+.trigger:hover {
+  background: #FFFFFF;
+  border-color: rgba(239, 68, 68, 0.1);
+}
+
+.triggerIcon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 11px;
+  color: #737373;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Dropdown */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #000000;
+  border-radius: 20px;
+  padding: 6px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(44, 24, 16, 0.12);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: #737373;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.option:hover {
+  background: #FFFFFF;
+  color: #1F1F1F;
+}
+
+.optionActive {
+  background: rgba(99,102,241,0.12);
+  color: #EF4444;
+}
+
+.optionIcon {
+  font-size: 15px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.storeLogo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.storeInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.storeName {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.storeAddress {
+  font-size: 11px;
+  color: #737373;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.check {
+  font-size: 12px;
+  color: #EF4444;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.divider {
+  height: 1px;
+  background: #FFFFFF;
+  margin: 4px 0;
+}
+
+.empty {
+  padding: 12px;
+  text-align: center;
+  color: #525252;
+  font-size: 13px;
+}

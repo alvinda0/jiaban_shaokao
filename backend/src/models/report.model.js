@@ -1,0 +1,258 @@
+const { pool } = require('../config/db');
+
+class ReportModel {
+  static async getProfitLossReport(store_id, filters = {}) {
+    const { date_from, date_to } = filters;
+    const dateFilter = `((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)`;
+    const params = [store_id, date_from, date_to];
+
+    try {
+      // A. PENDAPATAN
+      const revenueQuery = `
+        SELECT 
+          COUNT(DISTINCT o.id) as order_count,
+          SUM(o.subtotal) as subtotal,
+          SUM(o.discount_total) as discount_total,
+          SUM(o.service_charge_total) as service_charge,
+          SUM(o.tax_total) as tax_total,
+          SUM(o.grand_total) as total_revenue
+        FROM orders o
+        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+      `;
+
+      const revenueResult = await pool.query(revenueQuery, params);
+      const totalRevenue = revenueResult.rows[0] || {};
+
+      // B. COGS
+      const cogsQuery = `
+        SELECT 
+          SUM(COALESCE(p.cost_price, 0) * oi.qty) as total_cogs,
+          SUM(oi.qty) as total_items_sold
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+      `;
+
+      const cogsResult = await pool.query(cogsQuery, params);
+      const cogsData = cogsResult.rows[0] || { total_cogs: 0, total_items_sold: 0 };
+
+      // C. LABA KOTOR
+      const grossProfit = (totalRevenue.total_revenue || 0) - (cogsData.total_cogs || 0);
+      const grossProfitMargin = totalRevenue.total_revenue 
+        ? ((grossProfit / totalRevenue.total_revenue) * 100).toFixed(2)
+        : 0;
+
+      // D. PENGELUARAN
+      const discountQuery = `
+        SELECT SUM(amount) as total_discount 
+        FROM order_discounts od
+        INNER JOIN orders o ON od.order_id = o.id
+        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+      `;
+
+      const discountResult = await pool.query(discountQuery, params);
+      const discountExpense = parseFloat(discountResult.rows[0]?.total_discount || 0);
+
+      // Kompayment (Complimentary/Free Items & Orders)
+      const compaymentQuery = `
+        SELECT 
+          SUM(COALESCE(oi.line_total, 0)) + SUM(CASE WHEN o.is_complimentary THEN COALESCE(o.complimentary_amount, 0) ELSE 0 END) as total_complimentary
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE o.store_id = $1 AND o.status = 'paid' AND (oi.is_complimentary = true OR o.is_complimentary = true) AND ${dateFilter}
+      `;
+
+      const compaymentResult = await pool.query(compaymentQuery, params);
+      const totalCompaymentExpense = parseFloat(compaymentResult.rows[0]?.total_complimentary || 0);
+
+      const totalOperatingExpenses = discountExpense + totalCompaymentExpense;
+
+      // E. LABA BERSIH
+      const netProfit = grossProfit - totalOperatingExpenses;
+      const netProfitMargin = totalRevenue.total_revenue
+        ? ((netProfit / totalRevenue.total_revenue) * 100).toFixed(2)
+        : 0;
+
+      // Product Breakdown
+      const productQuery = `
+        SELECT 
+          oi.product_id,
+          oi.product_name,
+          SUM(oi.qty) as qty_sold,
+          oi.unit_price,
+          COALESCE(AVG(p.cost_price), 0) as avg_cost_price,
+          SUM(oi.line_total) as sales_value,
+          SUM(COALESCE(p.cost_price, 0) * oi.qty) as total_cogs,
+          (SUM(oi.line_total) - SUM(COALESCE(p.cost_price, 0) * oi.qty)) as product_margin
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+        GROUP BY oi.product_id, oi.product_name, oi.unit_price
+        ORDER BY sales_value DESC
+      `;
+
+      const productResult = await pool.query(productQuery, params);
+
+      return {
+        period: { date_from, date_to },
+        A_pendapatan: {
+          total_subtotal: parseFloat(totalRevenue.subtotal || 0),
+          total_discount: parseFloat(totalRevenue.discount_total || 0),
+          total_service_charge: parseFloat(totalRevenue.service_charge || 0),
+          total_tax: parseFloat(totalRevenue.tax_total || 0),
+          total_revenue: parseFloat(totalRevenue.total_revenue || 0),
+          order_count: totalRevenue.order_count || 0,
+          complimentary: parseFloat((totalCompaymentExpense).toFixed(2)),
+        },
+        B_harga_pokok_penjualan: {
+          total_cogs: parseFloat(cogsData.total_cogs || 0),
+          total_items_sold: cogsData.total_items_sold || 0,
+          avg_cogs_per_item: cogsData.total_items_sold 
+            ? parseFloat((cogsData.total_cogs / cogsData.total_items_sold).toFixed(2))
+            : 0,
+        },
+        C_laba_kotor: {
+          laba_kotor: parseFloat(grossProfit.toFixed(2)),
+          margin_percentage: parseFloat(grossProfitMargin),
+        },
+        D_pengeluaran: {
+          discount_given: parseFloat((discountExpense).toFixed(2)),
+          complimentary: parseFloat((totalCompaymentExpense).toFixed(2)),
+          refunds: 0,
+          other_expenses: 0,
+          total_expenses: parseFloat((totalOperatingExpenses).toFixed(2)),
+        },
+        E_laba_rugi_bersih: {
+          laba_rugi_bersih: parseFloat(netProfit.toFixed(2)),
+          margin_percentage: parseFloat(netProfitMargin),
+        },
+        product_breakdown: productResult.rows.map(row => ({
+          product_id: row.product_id,
+          product_name: row.product_name,
+          qty_sold: row.qty_sold,
+          unit_price: parseFloat(row.unit_price),
+          avg_cost_price: parseFloat(row.avg_cost_price),
+          sales_value: parseFloat(row.sales_value || 0),
+          total_cogs: parseFloat(row.total_cogs || 0),
+          product_margin: parseFloat(row.product_margin || 0),
+          margin_percentage: row.sales_value 
+            ? parseFloat(((row.product_margin / row.sales_value) * 100).toFixed(2))
+            : 0,
+        })),
+      };
+    } catch (error) {
+      console.error('❌ getProfitLossReport error:', error);
+      throw error;
+    }
+  }
+
+  static async getDailyRevenue(store_id, filters = {}) {
+    const { date_from, date_to, time_from, time_to } = filters;
+    let dateFilter = `((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)`;
+    let params = [store_id, date_from, date_to];
+    let paramIndex = 4;
+
+    if (time_from) {
+      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time >= $${paramIndex}::time`;
+      params.push(time_from);
+      paramIndex++;
+    }
+    if (time_to) {
+      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time <= $${paramIndex}::time`;
+      params.push(time_to);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT 
+        (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date as date,
+        COUNT(DISTINCT o.id) as order_count,
+        SUM(o.grand_total) as total_revenue,
+        SUM(o.subtotal) as subtotal,
+        SUM(o.discount_total) as discount_total,
+        SUM(o.service_charge_total) as service_charge,
+        SUM(o.tax_total) as tax_total
+      FROM orders o
+      WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+      GROUP BY (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date
+      ORDER BY date DESC
+    `;
+
+    try {
+      const result = await pool.query(query, params);
+      return result.rows.map(row => ({
+        date: row.date,
+        order_count: row.order_count,
+        total_revenue: parseFloat(row.total_revenue || 0),
+        subtotal: parseFloat(row.subtotal || 0),
+        discount_total: parseFloat(row.discount_total || 0),
+        service_charge: parseFloat(row.service_charge || 0),
+        tax_total: parseFloat(row.tax_total || 0),
+      }));
+    } catch (error) {
+      console.error('❌ getDailyRevenue error:', error);
+      throw error;
+    }
+  }
+
+  static async getTopProducts(store_id, filters = {}) {
+    const { date_from, date_to, time_from, time_to, limit = 10 } = filters;
+    let dateFilter = `((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)`;
+    let params = [store_id, date_from, date_to];
+    let paramIndex = 4;
+
+    if (time_from) {
+      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time >= $${paramIndex}::time`;
+      params.push(time_from);
+      paramIndex++;
+    }
+    if (time_to) {
+      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time <= $${paramIndex}::time`;
+      params.push(time_to);
+      paramIndex++;
+    }
+
+    params.push(limit);
+
+    const query = `
+      SELECT 
+        oi.product_id,
+        oi.product_name,
+        SUM(oi.qty) as qty_sold,
+        oi.unit_price,
+        SUM(oi.line_total) as sales_value,
+        SUM(COALESCE(p.cost_price, 0) * oi.qty) as total_cogs,
+        (SUM(oi.line_total) - SUM(COALESCE(p.cost_price, 0) * oi.qty)) as product_margin
+      FROM order_items oi
+      INNER JOIN orders o ON oi.order_id = o.id
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+      GROUP BY oi.product_id, oi.product_name, oi.unit_price
+      ORDER BY qty_sold DESC
+      LIMIT $${paramIndex}
+    `;
+
+    try {
+      const result = await pool.query(query, params);
+      return result.rows.map(row => ({
+        product_id: row.product_id,
+        product_name: row.product_name,
+        qty_sold: row.qty_sold,
+        unit_price: parseFloat(row.unit_price),
+        sales_value: parseFloat(row.sales_value || 0),
+        total_cogs: parseFloat(row.total_cogs || 0),
+        product_margin: parseFloat(row.product_margin || 0),
+        margin_percentage: row.sales_value 
+          ? parseFloat(((row.product_margin / row.sales_value) * 100).toFixed(2))
+          : 0,
+      }));
+    } catch (error) {
+      console.error('❌ getTopProducts error:', error);
+      throw error;
+    }
+  }
+}
+
+module.exports = ReportModel;

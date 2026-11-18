@@ -1,0 +1,422 @@
+.page {
+  padding: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 64px);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  color: #000000;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #737373;
+  margin: 4px 0 0 0;
+}
+
+.loading {
+  text-align: center;
+  padding: 48px;
+  color: #737373;
+  font-size: 15px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 20px;
+  border: 2px solid #374151;
+  transition: transform 0.2s, border-color 0.2s;
+  border: 2px solid #000000;}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #525252;
+}
+
+.storeLogo {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: #FFFFFF;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.storeName {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #000000;
+  flex: 1;
+}
+
+.badgeActive {
+  background: #D9F7BE;
+  color: #22C55E;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badgeInactive {
+  background: #FFFFFF;
+  color: #737373;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.address,
+.phone {
+  font-size: 14px;
+  color: #737373;
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #374151;
+}
+
+.empty {
+  text-align: center;
+  padding: 64px 20px;
+  color: #737373;
+}
+
+.empty span {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* Buttons */
+.btnPrimary {
+  background: #EF4444;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnPrimary:hover {
+  background: #DC2626;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: #FFFFFF;
+  color: #000000;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex: 1;
+}
+
+.btnSecondary:hover {
+  background: #d1d5db;
+}
+
+.btnDanger {
+  background: #FFCCC7;
+  color: #CF1322;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnDanger:hover {
+  background: #991b1b;
+}
+
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #737373;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.btnClose:hover {
+  background: #FFFFFF;
+}
+
+/* Modal */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: #FFFFFF;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #374151;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: #000000;
+}
+
+.modalBody {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modalDesc {
+  margin: 0;
+  font-size: 15px;
+  color: #525252;
+  line-height: 1.6;
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #374151;
+  justify-content: flex-end;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #404040;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.label:first-child {
+  margin-top: 0;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #000000;
+  background: #FFFFFF;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #EF4444;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #737373;
+}
+
+.textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.logoUpload {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logoPreview {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #374151;
+}
+
+.fileInput {
+  font-size: 14px;
+  color: #404040;
+}
+
+.uploadingText {
+  font-size: 13px;
+  color: #EF4444;
+  font-weight: 500;
+}
+
+/* Toggle Switch */
+.toggleContainer {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #374151;
+}
+
+.toggleWrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.toggleTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #404040;
+  margin-bottom: 4px;
+}
+
+.toggleDesc {
+  font-size: 13px;
+  color: #737373;
+}
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #525252;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: '';
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #1F1F1F;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle input:checked + .toggleSlider {
+  background-color: #EF4444;
+}
+
+.toggle input:checked + .toggleSlider:before {
+  transform: translateX(22px);
+}
+
+.errMsg {
+  margin-top: 16px;
+  padding: 12px;
+  background: #FFCCC7;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  color: #CF1322;
+  font-size: 13px;
+  line-height: 1.5;
+}

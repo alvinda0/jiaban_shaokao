@@ -1,0 +1,131 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E8E8E8;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(239, 68, 68, 0.08), transparent);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: #FFFFFF;
+  border: 2px solid #000000;
+  border-radius: 24px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 2px solid #000000;}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.brandIcon { font-size: 22px; }
+
+.brandName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.3px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #737373;
+  margin-bottom: 8px;
+}
+
+.errorBox {
+  padding: 10px 14px;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #f87171;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #737373;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  background: #FFFFFF;
+  border: 1px solid #000000;
+  border-radius: 8px;
+  color: #1F1F1F;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus { border-color: #EF4444; }
+.input::placeholder { color: #525252; }
+
+.passwordWrap {
+  position: relative;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #737373;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.eyeBtn:hover { color: #1F1F1F; }
+
+.submitBtn {
+  width: 100%;
+  padding: 11px;
+  background: linear-gradient(135deg, #EF4444, #F87171);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  margin-top: 4px;
+}
+
+.submitBtn:hover { opacity: 0.9; transform: translateY(-1px); }
+.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }

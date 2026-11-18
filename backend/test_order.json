@@ -1,0 +1,15 @@
+{
+  "store_id": "2a217fd0-5140-4e31-b137-c486ef41757b",
+  "table_id": "REPLACE_WITH_TABLE_ID",
+  "order_type": "dine_in",
+  "source": "qr",
+  "customer_name": "Test Customer",
+  "customer_phone": "081234567890",
+  "items": [
+    {
+      "product_id": "REPLACE_WITH_PRODUCT_ID",
+      "qty": 1,
+      "notes": "Test order"
+    }
+  ]
+}

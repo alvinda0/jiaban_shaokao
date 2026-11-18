@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS store_users (
+  id         CHAR(36)     NOT NULL DEFAULT (UUID()) PRIMARY KEY,
+  store_id   CHAR(36)     NOT NULL,
+  user_id    CHAR(36)     NOT NULL,
+  role_id    CHAR(36)     NOT NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_store_user (store_id, user_id),
+
+  CONSTRAINT fk_store_users_store FOREIGN KEY (store_id) REFERENCES stores(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_store_users_user  FOREIGN KEY (user_id)  REFERENCES users(id)  ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_store_users_role  FOREIGN KEY (role_id)  REFERENCES roles(id)  ON UPDATE CASCADE ON DELETE RESTRICT
+);
