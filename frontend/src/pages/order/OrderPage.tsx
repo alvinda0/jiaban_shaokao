@@ -465,7 +465,20 @@ export default function OrderPage() {
     toast.success(t('voucherRemoved'))
   }
 
-  // Calculate totals
+  // Refresh data
+  const refreshData = async () => {
+    try {
+      toast.loading(t('loading'))
+      await Promise.all([
+        refetch(), // Refresh products
+      ])
+      toast.dismiss()
+      toast.success(t('dataRefreshed') || 'Data updated')
+    } catch (error) {
+      toast.dismiss()
+      toast.error('Failed to refresh data')
+    }
+  }
   const cartSubtotal = cart.reduce((sum, item) => {
     const variantTotal = item.variants?.reduce((vsum, v) => vsum + (parseFloat(v.price_adjustment as any) || 0), 0) || 0
     return sum + ((parseFloat(item.product.price as any) + variantTotal) * item.qty)
@@ -710,6 +723,13 @@ export default function OrderPage() {
             </button>
           </div>
         )}
+        <button 
+          onClick={refreshData}
+          className={styles.refreshBtn}
+          title={t('refresh') || 'Refresh'}
+        >
+          🔄
+        </button>
         <LanguageSwitcher />
       </div>
 

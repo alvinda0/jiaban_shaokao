@@ -109,7 +109,7 @@ const createOrder = async (req, res) => {
       return error(res, 'items must be a non-empty array', 400);
     }
 
-    // Validate each item has product_id
+    // Validate each item has product_id and check stock
     if (items) {
       for (const item of items) {
         if (!item.product_id) {
@@ -117,6 +117,22 @@ const createOrder = async (req, res) => {
         }
         if (!item.qty || item.qty < 1) {
           return error(res, 'Each item must have qty >= 1', 400);
+        }
+
+        // Check product stock BEFORE creating order
+        const product = await require('../models/product.model').findById(item.product_id);
+        if (!product) {
+          return error(res, `Product not found: ${item.product_id}`, 404);
+        }
+
+        // If product tracks stock and stock is 0 or negative, reject order
+        if (product.track_stock && parseFloat(product.stock_qty) <= 0) {
+          return error(res, `Product "${product.name}" is out of stock`, 400);
+        }
+
+        // If stock is less than requested qty
+        if (product.track_stock && parseFloat(product.stock_qty) < item.qty) {
+          return error(res, `Insufficient stock for "${product.name}". Available: ${product.stock_qty}, Requested: ${item.qty}`, 400);
         }
       }
     }
@@ -336,6 +352,25 @@ const addOrderItem = async (req, res) => {
       console.log('📦 [BATCH ADD ITEMS] Store ID:', store_id);
       console.log('📦 [BATCH ADD ITEMS] Items count:', items.length);
       console.log('📦 [BATCH ADD ITEMS] Items data:', JSON.stringify(items, null, 2));
+      
+      // Validate stock for all items first
+      const ProductModel = require('../models/product.model');
+      for (const itemData of items) {
+        const product = await ProductModel.findById(itemData.product_id);
+        if (!product) {
+          return error(res, `Product not found: ${itemData.product_id}`, 404);
+        }
+        
+        // Check stock if product tracks stock
+        if (product.track_stock && parseFloat(product.stock_qty) <= 0) {
+          return error(res, `Product "${product.name}" is out of stock`, 400);
+        }
+        
+        if (product.track_stock && parseFloat(product.stock_qty) < itemData.qty) {
+          return error(res, `Insufficient stock for "${product.name}". Available: ${product.stock_qty}, Requested: ${itemData.qty}`, 400);
+        }
+      }
+      
       const addedItems = [];
       
       for (const itemData of items) {
@@ -387,6 +422,25 @@ const addOrderItem = async (req, res) => {
     }
 
     // Handle single item (legacy format)
+    // Validate stock before adding
+    if (product_id) {
+      const ProductModel = require('../models/product.model');
+      const product = await ProductModel.findById(product_id);
+      
+      if (!product) {
+        return error(res, `Product not found: ${product_id}`, 404);
+      }
+      
+      // Check stock if product tracks stock
+      if (product.track_stock && parseFloat(product.stock_qty) <= 0) {
+        return error(res, `Product "${product.name}" is out of stock`, 400);
+      }
+      
+      if (product.track_stock && parseFloat(product.stock_qty) < qty) {
+        return error(res, `Insufficient stock for "${product.name}". Available: ${product.stock_qty}, Requested: ${qty}`, 400);
+      }
+    }
+
     const item = await OrderService.addOrderItem(
       order_id,
       { product_id, qty, notes, variants, created_by },
