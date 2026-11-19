@@ -1,7 +1,7 @@
 const pg = require('pg');
 
 // Render PostgreSQL connection string
-const connectionString = process.env.DATABASE_URL || 'postgresql://db_jiaban_shaokao_user:rv9qnFfeYzMn2oO20cUCOz5nVJukehxc@dpg-dbv9ba56e07s73b5doo0-a.singapore-postgres.render.com/db_jiaban_shaokao';
+const connectionString = process.env.DATABASE_URL || '';
 
 const pool = new pg.Pool({
   connectionString: connectionString,
