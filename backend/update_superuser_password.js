@@ -14,7 +14,7 @@ async function updatePassword() {
     console.log('🔗 Connected to Render database...');
     
     // New correct hash for superuser123
-    const newHash = '$2b$10$J2zlW.syp2EdlncMQ1a9zOK7VV.CMLfSWOvykbLzpDbBJmCFtDs7S';
+    const newHash = '';
     
     // Update password
     const updateResult = await client.query(
