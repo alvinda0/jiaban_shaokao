@@ -18,6 +18,7 @@ const orderAdminRoutes = require('./order.admin.routes');
 const pinRoutes      = require('./pin.routes');
 const salesRoutes    = require('./sales.routes');
 const reportRoutes   = require('./report.routes');
+const dashboardRoutes = require('./dashboard.routes');
 
 router.use('/auth',                          authRoutes);
 router.use('/users',                         userRoutes);
@@ -33,6 +34,7 @@ router.use('/stores/:storeId/orders',        orderAdminRoutes);
 router.use('/stores/:storeId/pin',           pinRoutes);
 router.use('/stores/:storeId/sales',         salesRoutes);
 router.use('/stores/:storeId/reports',       reportRoutes);
+router.use('/',                              dashboardRoutes);
 router.use('/products',                      productRoutes);
 router.use('/orders',                        orderRoutes);
 router.use('/',                              variantRoutes);

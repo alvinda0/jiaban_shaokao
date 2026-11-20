@@ -380,10 +380,34 @@ export default function Orders() {
     if (!splitBillOrder || !currentStoreId) return;
     
     try {
-      await orderService.splitBill(currentStoreId, splitBillOrder.id, {
-        splits,
-        split_by: splitBy
-      });
+      if (splitBy === 'item') {
+        // Use createSplitBills for item-based split
+        const bills = splits.map(split => ({
+          label: split.label,
+          items: split.item_ids.map(itemId => {
+            const orderItem = splitBillOrder.items?.find(i => i.id === itemId);
+            return {
+              order_item_id: itemId,
+              qty: orderItem?.qty || 1
+            };
+          })
+        }));
+
+        await orderService.createSplitBills(currentStoreId, splitBillOrder.id, { bills });
+      } else {
+        // Use splitBill for amount-based split
+        const payload = {
+          splits: splits.map(s => ({
+            id: s.id,
+            label: s.label,
+            item_ids: [],
+            amount: s.amount
+          })),
+          split_by: splitBy
+        };
+        console.log('🔍 Sending amount-based split to backend:', JSON.stringify(payload, null, 2));
+        await orderService.splitBill(currentStoreId, splitBillOrder.id, payload);
+      }
       
       toast.success(`Bill berhasil di-split jadi ${splits.length} bills!`);
       setShowSplitBillModal(false);
@@ -598,17 +622,9 @@ export default function Orders() {
         const response = await orderService.getOrderDetailsAdmin(currentStoreId, orderId);
         console.log('🔍 Checking split bills:', response.data.bills);
         
-        const allBillsPaid = response.data.bills?.every(b => {
-          console.log(`  Bill ${b.bill_number}: status=${b.status}, paid=${b.paid_total}, total=${b.grand_total}`);
-          return b.status === 'paid';
-        });
+       
         
-        console.log('✅ All bills paid?', allBillsPaid);
         
-        if (!allBillsPaid) {
-          toast.error('Semua bills harus dibayar penuh sebelum order bisa diselesaikan!');
-          return;
-        }
       } else {
         // For regular orders, check paid_total
         if (order.paid_total < order.grand_total) {
@@ -854,7 +870,7 @@ export default function Orders() {
           orderTax={billPaymentData.tax}
           orderServiceCharge={billPaymentData.serviceCharge}
           orderType={billPaymentData.orderType}
-          availablePromos={[]}
+          availablePromos={availableVouchers}
           onPayment={handleBillPaymentSubmit}
         />
       )}

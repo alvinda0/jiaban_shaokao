@@ -554,6 +554,7 @@ class OrderModel {
       order_id,
       order_item_id,
       discount_id,
+      bill_id,
       name,
       type,
       value,
@@ -565,11 +566,12 @@ class OrderModel {
 
     const result = await pool.query(
       `INSERT INTO order_discounts 
-       (order_id, order_item_id, discount_id, name, type, value, amount, applied_stage, approved_by, applied_by) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+       (order_id, order_item_id, bill_id, discount_id, name, type, value, amount, applied_stage, approved_by, applied_by) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
         order_id,
         order_item_id || null,
+        bill_id || null,
         discount_id || null,
         name,
         type,
@@ -966,10 +968,10 @@ class OrderModel {
     const { bill_id, order_item_id, qty, unit_price, line_total } = data;
 
     const result = await pool.query(
-      `INSERT INTO order_bill_items (bill_id, order_item_id, qty, unit_price, line_total) 
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO order_bill_items (bill_id, order_item_id, qty, amount) 
+       VALUES ($1, $2, $3, $4)
        RETURNING id`,
-      [bill_id, order_item_id, qty, unit_price, line_total]
+      [bill_id, order_item_id, qty, line_total]
     );
 
     return { insertId: result.rows[0].id };

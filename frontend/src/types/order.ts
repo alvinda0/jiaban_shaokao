@@ -115,6 +115,7 @@ export interface OrderDiscount {
   order_id: string;
   order_item_id: string | null;
   discount_id: string | null;
+  bill_id: string | null;  // NEW: Link to specific bill for split payment promo
   name: string;
   type: DiscountType;
   value: number;
@@ -196,6 +197,7 @@ export interface OrderBill {
   grand_total: number;
   paid_total: number;
   paid_at: string | null;
+  paid_total_updated_at: string | null;  // NEW: Track when bill totals were last updated
   created_at: string;
   
   // Relations

@@ -104,9 +104,14 @@ export function ViewSplitBillsModal({
 
                     {/* Bill Breakdown */}
                     <div className={styles.splitTotals}>
+                      {/* Show subtotal - if 0, try to infer from payments or grand_total */}
                       <div className={styles.totalRow}>
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(parseFloat(bill.subtotal?.toString() || '0'))}</span>
+                        <span>{formatCurrency(
+                          parseFloat(bill.subtotal?.toString() || '0') > 0 
+                            ? parseFloat(bill.subtotal?.toString() || '0')
+                            : parseFloat(bill.grand_total?.toString() || '0')
+                        )}</span>
                       </div>
                       
                       {parseFloat(bill.discount_total?.toString() || '0') > 0 && (

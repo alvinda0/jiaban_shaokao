@@ -213,16 +213,7 @@ export function SplitBillModal({ isOpen, order, onClose, onSubmit }: SplitBillMo
 
     setIsSubmitting(true);
     try {
-      // Transform splits to send subtotal to backend (not grand total)
-      const transformedSplits = splits.map((split, index) => {
-        const totals = splitTotals[index];
-        return {
-          ...split,
-          amount: totals.subtotal // Send subtotal to backend, not grand total
-        };
-      });
-      
-      await onSubmit(transformedSplits, splitBy);
+      await onSubmit(splits, splitBy);
       onClose();
     } catch (error) {
       console.error('Split bill error:', error);

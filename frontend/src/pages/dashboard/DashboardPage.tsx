@@ -1,5 +1,57 @@
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import styles from './DashboardPage.module.css'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
+interface DashboardData {
+  today: {
+    order_count: number
+    total_revenue: number
+    subtotal: number
+    discount_total: number
+    service_charge: number
+    tax_total: number
+  }
+  this_month: {
+    order_count: number
+    total_revenue: number
+    subtotal: number
+    discount_total: number
+    service_charge: number
+    tax_total: number
+  }
+  counts: {
+    total_stores: number
+    total_users: number
+    total_menu: number
+  }
+  weekly_chart: Array<{
+    date: string
+    day: string
+    order_count: number
+    revenue: number
+    subtotal: number
+    discount: number
+    service_charge: number
+    tax: number
+  }>
+  top_products_daily: Array<{
+    date: string
+    day: string
+    products: Array<{
+      id: string
+      name: string
+      qty_sold: number
+      sales_value: number
+    }>
+  }>
+  payment_methods: Array<{
+    name: string
+    transaction_count: number
+    total_amount: number
+  }>
+}
 
 interface StatCard {
   label: string
@@ -10,101 +62,256 @@ interface StatCard {
 }
 
 const statCards: StatCard[] = [
-  { label: 'Total Store',     value: '—', icon: '🏪', color: '#6366f1', roles: ['superuser'] },
-  { label: 'Total User',      value: '—', icon: '👥', color: '#0ea5e9', roles: ['superuser'] },
-  { label: 'Total Menu',      value: '—', icon: '🍽️', color: '#f59e0b', roles: ['superuser', 'admin'] },
-  { label: 'Total Stok',      value: '—', icon: '📦', color: '#10b981', roles: ['superuser', 'admin'] },
-  { label: 'Order Hari Ini',  value: '—', icon: '🧾', color: '#ec4899', roles: ['superuser', 'admin', 'captain'] },
+  { label: 'Total Store', value: '—', icon: '🏪', color: '#6366f1', roles: ['superuser'] },
+  { label: 'Total User', value: '—', icon: '👥', color: '#0ea5e9', roles: ['superuser'] },
+  { label: 'Total Menu', value: '—', icon: '🍽️', color: '#f59e0b', roles: ['superuser', 'admin'] },
+  { label: 'Order Hari Ini', value: '—', icon: '🧾', color: '#ec4899', roles: ['superuser', 'admin', 'captain'] },
   { label: 'Pendapatan Hari Ini', value: '—', icon: '💰', color: '#f59e0b', roles: ['superuser', 'admin'] },
-  { label: 'Order Pending',   value: '—', icon: '⏳', color: '#f97316', roles: ['captain', 'kitchen'] },
-  { label: 'Voucher Aktif',   value: '—', icon: '🎟️', color: '#a855f7', roles: ['superuser', 'admin'] },
+  { label: 'Order Pending', value: '—', icon: '⏳', color: '#f97316', roles: ['captain', 'kitchen'] },
+  { label: 'Voucher Aktif', value: '—', icon: '🎟️', color: '#a855f7', roles: ['superuser', 'admin'] },
 ]
 
-const quickLinks = [
-  { label: 'Kelola Store',  path: '/stores',     icon: '🏪', roles: ['superuser'] },
-  { label: 'Kelola User',   path: '/users',      icon: '👥', roles: ['superuser'] },
-  { label: 'Kelola Menu',   path: '/menu',       icon: '🍽️', roles: ['superuser', 'admin'] },
-  { label: 'Lihat Orders',  path: '/orders',     icon: '🧾', roles: ['superuser', 'admin', 'captain'] },
-  { label: 'Kitchen View',  path: '/kitchen',    icon: '👨‍🍳', roles: ['kitchen'] },
-  { label: 'Voucher',       path: '/vouchers',   icon: '🎟️', roles: ['superuser', 'admin'] },
-  { label: 'Laporan',       path: '/reports',    icon: '📈', roles: ['superuser', 'admin'] },
-]
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value)
+}
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const role = user?.role_name ?? ''
+  
+  // Superuser tidak punya store_id, perlu ambil dari database
+  const [stores, setStores] = useState<Array<{id: string; name: string}>>([])
+  const [selectedStore, setSelectedStore] = useState<string>('')
 
-  const now = new Date()
-  const greeting = now.getHours() < 12 ? 'Selamat Pagi' : now.getHours() < 17 ? 'Selamat Siang' : 'Selamat Malam'
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredStats  = statCards.filter(s => s.roles.includes(role))
-  const filteredLinks  = quickLinks.filter(l => l.roles.includes(role))
+  useEffect(() => {
+    if (role === 'superuser') {
+      // Fetch stores untuk superuser
+      const token = localStorage.getItem('token')
+      if (token) {
+        fetch(`${API_BASE_URL}/stores`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(r => r.json())
+          .then(result => {
+            if (result.success && result.data?.length > 0) {
+              setStores(result.data)
+              setSelectedStore(result.data[0].id)
+            }
+          })
+          .catch(err => console.error('Error fetching stores:', err))
+      }
+    } else {
+      setSelectedStore(user?.store_id || '')
+    }
+  }, [role, user])
+
+  useEffect(() => {
+    console.log('🔍 Dashboard useEffect:', { selectedStore, role })
+    if (!selectedStore) {
+      console.log('⚠️ No selectedStore, skipping fetch')
+      return
+    }
+    fetchDashboardData()
+  }, [selectedStore])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem('token')
+      console.log('🔑 Token:', token ? 'exists' : 'NOT FOUND')
+      
+      if (!token) {
+        setError('Token tidak ditemukan')
+        return
+      }
+
+      const url = `${API_BASE_URL}/stores/${selectedStore}/dashboard`
+      console.log('📡 Fetching:', url)
+      
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      console.log('📊 Response status:', res.status)
+      
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('❌ Error response:', text)
+        throw new Error(`HTTP ${res.status}: ${text}`)
+      }
+      
+      const result = await res.json()
+      console.log('✅ Dashboard data:', result)
+      
+      if (result.success) {
+        console.log('📊 Weekly chart data:', result.data.weekly_chart)
+        console.log('🏆 Daily products data:', result.data.top_products_daily)
+        setDashboardData(result.data)
+        setError(null)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error fetching data'
+      console.error('❌ Fetch error:', msg)
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredStats = statCards.filter(s => s.roles.includes(role))
+
+  // Update stat cards dengan data dari API
+  const updatedStats = filteredStats.map(card => {
+    if (!dashboardData) return card
+    
+    switch (card.label) {
+      case 'Total Store':
+        return { ...card, value: dashboardData.counts.total_stores.toString() }
+      case 'Total User':
+        return { ...card, value: dashboardData.counts.total_users.toString() }
+      case 'Total Menu':
+        return { ...card, value: dashboardData.counts.total_menu.toString() }
+      case 'Order Hari Ini':
+        return { ...card, value: dashboardData.today.order_count.toString() }
+      case 'Pendapatan Hari Ini':
+        return { ...card, value: formatCurrency(dashboardData.today.total_revenue) }
+      default:
+        return card
+    }
+  })
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.error}>
+          <span>❌ {error}</span>
+          <button onClick={fetchDashboardData}>🔄 Coba Lagi</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.page}>
-
-      {/* Header */}
+      {/* Header with Store Selector for Superuser */}
       <div className={styles.header}>
-        <div>
-          <p className={styles.greeting}>{greeting},</p>
-          <h1 className={styles.title}>{user?.name} 👋</h1>
-          <p className={styles.subtitle}>
-            Berikut ringkasan aktivitas{role !== 'superuser' && user?.stores?.[0] ? ` di ${user.stores[0].store_name}` : ' sistem'} hari ini.
-          </p>
-        </div>
-        <div className={styles.roleBadge} style={{ background: getRoleColor(role) }}>
-          {role}
-        </div>
+        {role === 'superuser' && stores.length > 0 && (
+          <div className={styles.storeSelector}>
+            <label>Pilih Store:</label>
+            <select 
+              value={selectedStore} 
+              onChange={(e) => setSelectedStore(e.target.value)}
+              className={styles.storeSelectorInput}
+            >
+              {stores.map(store => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
       <div className={styles.statsGrid}>
-        {filteredStats.map(card => (
+        {updatedStats.map(card => (
           <div key={card.label} className={styles.statCard}>
             <div className={styles.statIconWrap} style={{ background: `${card.color}20` }}>
               <span className={styles.statIcon}>{card.icon}</span>
             </div>
             <div className={styles.statInfo}>
-              <span className={styles.statValue}>{card.value}</span>
+              <span className={styles.statValue}>{loading ? '...' : card.value}</span>
               <span className={styles.statLabel}>{card.label}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Quick Links */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Akses Cepat</h2>
-        <div className={styles.quickGrid}>
-          {filteredLinks.map(link => (
-            <a key={link.path} href={link.path} className={styles.quickCard}>
-              <span className={styles.quickIcon}>{link.icon}</span>
-              <span className={styles.quickLabel}>{link.label}</span>
-              <span className={styles.quickArrow}>→</span>
-            </a>
-          ))}
+      {/* Weekly Revenue Chart */}
+      {dashboardData && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>📈 Pendapatan Mingguan</h2>
+          <div className={styles.chartWrapper}>
+            {dashboardData.weekly_chart.length > 0 ? (
+              <div className={styles.barChart}>
+                {dashboardData.weekly_chart.map(day => {
+                  const maxRevenue = Math.max(...dashboardData.weekly_chart.map(d => d.revenue), 1)
+                  const heightPercent = (day.revenue / maxRevenue) * 100
+                  return (
+                    <div key={day.date} className={styles.barItem}>
+                      <div className={styles.barContainer}>
+                        <div
+                          className={styles.bar}
+                          style={{ height: `${heightPercent}%` }}
+                          title={`${day.day}: ${formatCurrency(day.revenue)}`}
+                        />
+                      </div>
+                      <div className={styles.barLabel}>
+                        <div className={styles.dayName}>{day.day}</div>
+                        <div className={styles.barValue}>{formatCurrency(day.revenue)}</div>
+                        <div className={styles.barOrders}>{day.order_count} orders</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={styles.emptyDay}>Tidak ada data penjualan minggu ini</div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Activity placeholder */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Aktivitas Terbaru</h2>
-        <div className={styles.emptyState}>
-          <span className={styles.emptyIcon}>📋</span>
-          <p>Belum ada aktivitas terbaru.</p>
+      {/* Top Products Daily */}
+      {dashboardData && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>🏆 Menu Paling Laris (Mingguan)</h2>
+          {dashboardData.top_products_daily.length > 0 ? (
+            <div className={styles.dailyProductsWrapper}>
+              {dashboardData.top_products_daily.map(day => (
+                <div key={day.date} className={styles.dailyProductsCard}>
+                  <div className={styles.dayHeader}>
+                    <h3>{day.day}</h3>
+                    <span className={styles.dateSubtitle}>{day.date}</span>
+                  </div>
+                  <div className={styles.productsList}>
+                    {day.products.length > 0 ? (
+                      day.products.map((product, idx) => (
+                        <div key={product.id} className={styles.productItem}>
+                          <span className={styles.productRank}>#{idx + 1}</span>
+                          <div className={styles.productInfo}>
+                            <div className={styles.productName}>{product.name}</div>
+                            <div className={styles.productMeta}>
+                              {product.qty_sold} terjual • {formatCurrency(product.sales_value)}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.emptyDay}>Tidak ada penjualan</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.emptyDay}>Tidak ada data produk minggu ini</div>
+          )}
         </div>
-      </div>
-
+      )}
     </div>
   )
-}
-
-function getRoleColor(role: string) {
-  const map: Record<string, string> = {
-    superuser: 'rgba(99,102,241,0.2)',
-    admin:     'rgba(14,165,233,0.2)',
-    captain:   'rgba(245,158,11,0.2)',
-    kitchen:   'rgba(16,185,129,0.2)',
-  }
-  return map[role] ?? 'rgba(255,255,255,0.08)'
 }

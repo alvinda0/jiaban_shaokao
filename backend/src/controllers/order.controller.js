@@ -974,6 +974,11 @@ const splitBill = async (req, res) => {
     const { id: order_id } = req.params;
     const { splits, split_by } = req.body; // splits: [{ item_ids: [], amount: 0, label: '' }], split_by: 'item' | 'amount'
 
+    console.log('📥 splitBill controller received:');
+    console.log('   order_id:', order_id);
+    console.log('   split_by:', split_by);
+    console.log('   splits:', JSON.stringify(splits, null, 2));
+
     if (!splits || !Array.isArray(splits) || splits.length < 2) {
       return error(res, 'At least 2 splits required', 400);
     }

@@ -65,6 +65,14 @@ class VoucherService {
 
  
   static async validateVoucher(code, cart, userId = null, skipMinPurchaseCheck = false) {
+    console.log('🔍 VoucherService.validateVoucher called with:', {
+      code,
+      cart_subtotal: cart?.subtotal,
+      cart_items: cart?.items?.length || 0,
+      userId,
+      skipMinPurchaseCheck
+    });
+
     const voucher = await VoucherModel.findByCode(code);
     
     if (!voucher) {
@@ -98,13 +106,23 @@ class VoucherService {
       }
     }
 
+    // Validate cart data
+    if (!cart || typeof cart !== 'object') {
+      throw { status: 400, message: 'Invalid cart data' };
+    }
+
+    const cartSubtotal = parseFloat(cart.subtotal || 0);
+    if (!Number.isFinite(cartSubtotal)) {
+      throw { status: 400, message: `Invalid subtotal: ${cart.subtotal}` };
+    }
+
     let discount = 0;
     let bundleApplied = false;
     let bundleItemCount = 0;
 
     if (voucher.type === 'discount') {
       // Check minimum purchase (skip during recalculation)
-      if (!skipMinPurchaseCheck && cart.subtotal < voucher.min_purchase) {
+      if (!skipMinPurchaseCheck && cartSubtotal < voucher.min_purchase) {
         throw { 
           status: 400, 
           message: `Minimum purchase of Rp ${Math.round(voucher.min_purchase).toLocaleString('id-ID')} required` 
@@ -112,7 +130,7 @@ class VoucherService {
       }
 
       console.log('💰 Calculating discount:', {
-        subtotal: cart.subtotal,
+        subtotal: cartSubtotal,
         discount_type: voucher.discount_type,
         discount_value: voucher.discount_value,
         max_discount: voucher.max_discount,
@@ -120,7 +138,7 @@ class VoucherService {
       });
 
       if (voucher.discount_type === 'percentage') {
-        discount = (cart.subtotal * voucher.discount_value) / 100;
+        discount = (cartSubtotal * voucher.discount_value) / 100;
         
         console.log('📊 Percentage discount calculated:', discount);
         
@@ -133,12 +151,12 @@ class VoucherService {
       } else if (voucher.discount_type === 'fixed') {
         discount = voucher.discount_value;
         
-        if (discount > cart.subtotal) {
-          discount = cart.subtotal;
+        if (discount > cartSubtotal) {
+          discount = cartSubtotal;
         }
       }
     } else if (voucher.type === 'bundle') {
-      const bundleItem = cart.items.find(item => item.product_id === voucher.bundle_product_id);
+      const bundleItem = cart.items?.find(item => item.product_id === voucher.bundle_product_id);
       
       if (!bundleItem || bundleItem.quantity < voucher.bundle_qty) {
         throw { 
@@ -152,6 +170,18 @@ class VoucherService {
       discount = normalPrice - bundlePrice;
       bundleApplied = true;
       bundleItemCount = voucher.bundle_qty;
+    }
+
+    // Validate discount
+    if (!Number.isFinite(discount)) {
+      console.error('❌ Discount is NaN!', {
+        discount,
+        cartSubtotal,
+        voucher_discount_type: voucher.discount_type,
+        voucher_discount_value: voucher.discount_value,
+        voucher_max_discount: voucher.max_discount
+      });
+      throw { status: 400, message: `Invalid discount calculation: ${discount}` };
     }
 
     return {

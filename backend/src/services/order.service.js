@@ -893,54 +893,270 @@ class OrderService {
       throw new Error('Cannot add payment to void/merged order');
     }
 
-    // If voucher code provided and not already in notes, add it
-    if (voucher_code && (!order.notes || !order.notes.includes('Voucher:'))) {
-      console.log('🎫 Voucher code received:', voucher_code);
-      console.log('📝 Current order notes:', order.notes);
-      
-      const newNotes = order.notes ? `${order.notes} | Voucher: ${voucher_code}` : `Voucher: ${voucher_code}`;
-      console.log('📝 Updating order notes to:', newNotes);
-      
-      await OrderModel.update(order_id, { notes: newNotes });
-      
-      // Reload order to get updated notes
-      order = await OrderModel.findById(order_id);
-      console.log('✅ Order notes updated:', order.notes);
-    }
+    console.log('💳 Processing payment:', { 
+      order_id, 
+      bill_id, 
+      voucher_code, 
+      amount,
+      isVoucherForBill: !!(bill_id && voucher_code),
+      isVoucherForOrder: !!(voucher_code && !bill_id)
+    });
 
-    // IMPORTANT: Recalculate order totals FIRST to ensure grand_total is up-to-date
-    // This handles cases where voucher was applied but order not yet recalculated
-    console.log('🔄 Recalculating order totals before payment validation...');
-    await this.recalculateOrderTotals(order_id, order.order_type);
-    
-    // Reload order to get updated grand_total
-    order = await OrderModel.findById(order_id);
-    console.log('💰 Order grand_total after recalculate:', order.grand_total);
-    console.log('💰 Payment amount:', amount);
+    let expectedTotal = null;  // Initialize expectedTotal early
 
-    // VALIDATE: Payment amount must match order/bill grand_total (after recalculation)
-    let expectedTotal = order.grand_total;
-    
-    // If paying for a specific bill (split payment), validate against bill total
-    if (bill_id) {
+    // ========================================
+    // CASE 1: Voucher for specific Bill (Split Payment)
+    // ========================================
+    if (bill_id && voucher_code) {
+      console.log('🎯 CASE 1: Voucher for specific Bill (Split Payment)');
+      
       const bill = await OrderModel.getBillById(bill_id);
       if (!bill) {
         throw new Error('Bill not found');
       }
-      expectedTotal = bill.grand_total;
-      console.log('💰 This is a split bill payment. Bill grand_total:', expectedTotal);
+
+      console.log('💳 Processing payment for bill with data:', {
+        bill_id,
+        bill_subtotal: bill.subtotal,
+        bill_grand_total: bill.grand_total,
+        split_method: bill.split_method
+      });
+
+      // Get bill items to calculate subtotal
+      const billItems = await OrderModel.getBillItems(bill_id);
+      
+      // For amount-based splits, there are no items, so use the bill's saved subtotal
+      // For item-based splits, calculate from items
+      let billSubtotal = 0;
+      if (billItems.length > 0) {
+        billSubtotal = billItems.reduce((sum, item) => sum + item.amount, 0);
+        console.log('✅ Bill items found, subtotal:', billSubtotal);
+      } else if (bill.subtotal && bill.subtotal > 0) {
+        // No items found, use the bill's recorded subtotal (for amount-based splits)
+        billSubtotal = bill.subtotal;
+        console.log('✅ No items (amount-based split), using bill subtotal:', billSubtotal);
+      } else {
+        throw new Error(`Cannot determine bill subtotal: no items and bill.subtotal = ${bill.subtotal}`);
+      }
+
+      // Validate voucher
+      let cartData;
+      
+      if (billItems.length > 0) {
+        // Item-based split: use actual items
+        cartData = {
+          subtotal: billSubtotal,
+          items: billItems.map(item => {
+            // Use unit_price from order_items, or calculate from amount/qty
+            const unitPrice = parseFloat(item.unit_price || 0) || (item.qty > 0 ? item.amount / item.qty : 0);
+            
+            console.log('📦 Bill item:', {
+              order_item_id: item.order_item_id,
+              product_id: item.product_id,
+              qty: item.qty,
+              unit_price: item.unit_price,
+              calculated_unit_price: item.calculated_unit_price,
+              amount: item.amount,
+              final_unit_price: unitPrice
+            });
+            
+            return {
+              product_id: item.product_id,
+              quantity: item.qty,
+              price: unitPrice,
+              line_total: parseFloat(item.amount || 0)
+            };
+          })
+        };
+        console.log('📦 Item-based split with', billItems.length, 'items');
+        console.log('📦 Cart data for voucher validation:', JSON.stringify(cartData, null, 2));
+      } else {
+        // Amount-based split: create synthetic item representing the split amount
+        cartData = {
+          subtotal: billSubtotal,
+          items: [{
+            product_id: null,
+            quantity: 1,
+            price: billSubtotal,
+            line_total: billSubtotal,
+            name: 'Split Bill Amount'
+          }]
+        };
+        console.log('💰 Amount-based split, synthetic item with subtotal:', billSubtotal);
+      }
+
+      try {
+        console.log('🎫 Validating voucher for bill:', { voucher_code, billSubtotal });
+        
+        const voucherResult = await VoucherService.validateVoucher(
+          voucher_code,
+          cartData,
+          order.created_by,
+          false  // Don't skip min_purchase check
+        );
+
+        console.log('✅ Voucher validated. Discount:', voucherResult.discount);
+        
+        // Validate discount is a valid number
+        if (!Number.isFinite(voucherResult.discount)) {
+          console.error('❌ Invalid discount value:', voucherResult.discount);
+          console.error('❌ Voucher result:', JSON.stringify(voucherResult, null, 2));
+          console.error('❌ Cart data sent:', JSON.stringify(cartData, null, 2));
+          throw new Error(`Invalid discount calculation: ${voucherResult.discount}`);
+        }
+
+        // Add discount ONLY to this bill (not to order)
+        const discountResult = await OrderModel.addDiscount({
+          order_id,
+          order_item_id: null,
+          discount_id: null,
+          name: `Payment Voucher: ${voucher_code}`,
+          type: 'fixed',
+          value: voucherResult.discount,
+          amount: voucherResult.discount,
+          applied_stage: 'payment',
+          approved_by: order.created_by,
+          applied_by: received_by,
+          bill_id,  // ← Link discount to specific bill
+        });
+
+        console.log('✅ Discount added to bill. ID:', discountResult);
+
+        // Recalculate BILL totals (not order totals)
+        console.log('🔄 Recalculating bill totals with new discount...');
+        const updatedBillTotals = await this.recalculateBillTotals(bill_id);
+
+        console.log('✅ Bill totals recalculated:', updatedBillTotals);
+
+        // Record voucher usage
+        await VoucherModel.incrementUsage(voucherResult.voucher.id);
+        await VoucherModel.recordUsage(voucherResult.voucher.id, order.created_by, order_id);
+
+        // Update expectedTotal for validation with NEW grand_total after discount
+        expectedTotal = updatedBillTotals.grand_total;
+        console.log('💰 Updated expectedTotal for bill (after discount):', expectedTotal);
+        
+        // VALIDATE: Payment amount must match new grand_total
+        console.log('💰 Validating payment amount against new bill total...');
+        console.log(`   Expected: ${expectedTotal}, Received: ${amount}`);
+        
+        const amountDiff = Math.abs(amount - expectedTotal);
+        if (amountDiff > 1) { // Allow 1 rupiah rounding difference
+          console.error('❌ Payment amount does not match new bill total!');
+          console.error('   Expected total (after discount): Rp', Math.round(expectedTotal).toLocaleString('id-ID'));
+          console.error('   Payment amount: Rp', Math.round(amount).toLocaleString('id-ID'));
+          console.error('   Difference: Rp', Math.round(amountDiff).toLocaleString('id-ID'));
+          throw new Error(`Payment amount (Rp ${Math.round(amount).toLocaleString('id-ID')}) does not match bill total after discount (Rp ${Math.round(expectedTotal).toLocaleString('id-ID')})`);
+        }
+        
+        console.log('✅ Payment amount matches new bill total');
+
+      } catch (err) {
+        console.error('❌ Voucher validation failed:', err.message);
+        throw new Error(`Voucher error: ${err.message || err.status || 'Unknown error'}`);
+      }
+    } 
+    // ========================================
+    // CASE 2: Voucher for entire Order (No split)
+    // ========================================
+    else if (voucher_code && !bill_id) {
+      console.log('🎯 CASE 2: Voucher for entire Order');
+      
+      // If voucher code provided and not already in notes, add it
+      if (!order.notes || !order.notes.includes('Voucher:')) {
+        console.log('🎫 Voucher code received:', voucher_code);
+        console.log('📝 Current order notes:', order.notes);
+        
+        const newNotes = order.notes ? `${order.notes} | Voucher: ${voucher_code}` : `Voucher: ${voucher_code}`;
+        console.log('📝 Updating order notes to:', newNotes);
+        
+        await OrderModel.update(order_id, { notes: newNotes });
+        
+        // Reload order to get updated notes
+        order = await OrderModel.findById(order_id);
+        console.log('✅ Order notes updated:', order.notes);
+      }
+
+      // Recalculate order totals (will apply voucher)
+      console.log('🔄 Recalculating order totals before payment validation...');
+      await this.recalculateOrderTotals(order_id, order.order_type);
+      
+      // Reload order to get updated grand_total
+      order = await OrderModel.findById(order_id);
+      console.log('💰 Order grand_total after recalculate:', order.grand_total);
     }
-    
-    const amountDiff = Math.abs(amount - expectedTotal);
-    if (amountDiff > 1) { // Allow 1 rupiah rounding difference
-      console.error('❌ Payment amount mismatch!');
-      console.error('   Expected total:', expectedTotal);
-      console.error('   Payment amount:', amount);
-      console.error('   Difference:', amountDiff);
-      throw new Error(`Payment amount (Rp ${Math.round(amount).toLocaleString('id-ID')}) does not match ${bill_id ? 'bill' : 'order'} total (Rp ${Math.round(expectedTotal).toLocaleString('id-ID')})`);
+    // ========================================
+    // CASE 3: Payment without voucher
+    // ========================================
+    else {
+      console.log('🎯 CASE 3: Payment without voucher');
+      
+      // For split payment without voucher, recalculate bill totals
+      if (bill_id) {
+        console.log('🔄 Recalculating bill totals...');
+        await this.recalculateBillTotals(bill_id);
+      } else {
+        console.log('🔄 Recalculating order totals...');
+        await this.recalculateOrderTotals(order_id, order.order_type);
+      }
+      
+      // Reload order
+      order = await OrderModel.findById(order_id);
     }
 
-    console.log('✅ Payment amount validated');
+    console.log('💰 Payment amount:', amount);
+
+    // VALIDATE: Payment amount must match order/bill grand_total (after recalculation)
+    // Note: Skip validation if voucher will be applied, since totals will change
+    if (!voucher_code) {
+      // Only validate if no voucher (voucher will change totals anyway)
+      if (expectedTotal === null) {
+        // Fallback: calculate expectedTotal if not already set
+        if (bill_id) {
+          const bill = await OrderModel.getBillById(bill_id);
+          if (!bill) {
+            throw new Error('Bill not found');
+          }
+          expectedTotal = bill.grand_total;
+        } else {
+          expectedTotal = order.grand_total;
+        }
+      }
+      
+      console.log('💰 Expected total:', expectedTotal);
+      
+      const amountDiff = Math.abs(amount - expectedTotal);
+      if (amountDiff > 1) { // Allow 1 rupiah rounding difference
+        console.error('❌ Payment amount mismatch!');
+        console.error('   Expected total:', expectedTotal);
+        console.error('   Payment amount:', amount);
+        console.error('   Difference:', amountDiff);
+        throw new Error(`Payment amount (Rp ${Math.round(amount).toLocaleString('id-ID')}) does not match ${bill_id ? 'bill' : 'order'} total (Rp ${Math.round(expectedTotal).toLocaleString('id-ID')})`);
+      }
+
+      console.log('✅ Payment amount validated');
+    } else {
+      console.log('💰 Voucher will be applied - skipping payment validation (totals will change)');
+    }
+
+    // VALIDATE: For cash payments, tendered_amount must be >= amount
+    if (payment_method_id && (payment_method_id === 'cash' || payment_method_id === 'CASH' || payment_method_id === 'Cash')) {
+      console.log('💳 Validating CASH payment...');
+      console.log(`   Amount: ${amount}, Tendered: ${tendered_amount}`);
+      
+      if (tendered_amount < amount) {
+        const shortfall = amount - tendered_amount;
+        console.error(`❌ Insufficient cash! Short Rp ${Math.round(shortfall).toLocaleString('id-ID')}`);
+        throw new Error(`Insufficient cash payment. Need Rp ${Math.round(amount).toLocaleString('id-ID')}, received Rp ${Math.round(tendered_amount).toLocaleString('id-ID')}`);
+      }
+      
+      if (change_amount && change_amount < 0) {
+        console.error(`❌ Invalid change amount: ${change_amount}`);
+        throw new Error(`Invalid change amount. Tendered amount must be at least Rp ${Math.round(amount).toLocaleString('id-ID')}`);
+      }
+      
+      console.log('✅ Cash payment validated');
+    }
 
     // Resolve payment_method_id if it's a code (string not UUID format)
     let resolvedPaymentMethodId = payment_method_id;
@@ -1289,7 +1505,8 @@ class OrderService {
         if (!orderItem) continue;
 
         const qty = billItem.qty || orderItem.qty;
-        const unit_price = orderItem.unit_price + orderItem.variant_total;
+        // Parse unit_price and variant_total as numbers
+        const unit_price = parseFloat(orderItem.unit_price || 0) + parseFloat(orderItem.variant_total || 0);
         const line_total = unit_price * qty;
 
         subtotal += line_total;
@@ -1303,17 +1520,19 @@ class OrderService {
 
       // Apply proportional discount
       const discount_ratio = order.discount_total / order.subtotal || 0;
-      const discount_total = subtotal * discount_ratio;
+      const discount_total = Math.round(subtotal * discount_ratio);
 
       // Apply proportional service charge and tax
-      const sc_ratio = order.service_charge_total / (order.subtotal - order.discount_total) || 0;
-      const service_charge_total = (subtotal - discount_total) * sc_ratio;
+      const subtotal_after_discount = subtotal - discount_total;
+      const sc_ratio = order.service_charge_total / Math.max(order.subtotal - order.discount_total, 1) || 0;
+      const service_charge_total = Math.round(subtotal_after_discount * sc_ratio);
 
-      const tax_ratio = order.tax_total / (order.subtotal - order.discount_total + order.service_charge_total) || 0;
-      const tax_total = (subtotal - discount_total + service_charge_total) * tax_ratio;
+      const tax_base = subtotal_after_discount + service_charge_total;
+      const tax_ratio = order.tax_total / Math.max(order.subtotal - order.discount_total + order.service_charge_total, 1) || 0;
+      const tax_total = Math.round(tax_base * tax_ratio);
 
       const grand_total = Math.round(subtotal - discount_total + service_charge_total + tax_total);
-      const rounding = grand_total - (subtotal - discount_total + service_charge_total + tax_total);
+      const rounding = Math.round(grand_total - (subtotal - discount_total + service_charge_total + tax_total));
 
       // Create bill
       const billResult = await OrderModel.createBill({
@@ -1339,7 +1558,198 @@ class OrderService {
       createdBills.push(await OrderModel.getBillById(billResult.insertId));
     }
 
+    // Mark order as split
+    await pool.query(
+      'UPDATE orders SET is_split = TRUE WHERE id = $1',
+      [order_id]
+    );
+
     return createdBills;
+  }
+
+  // Recalculate totals for a specific bill (for split-specific promo)
+  async recalculateBillTotals(bill_id) {
+    console.log('');
+    console.log('════════════════════════════════════════════════');
+    console.log('🔍 RECALCULATE BILL TOTALS START');
+    console.log('════════════════════════════════════════════════');
+    console.log('📋 Bill ID:', bill_id);
+    
+    // Get bill
+    const bill = await OrderModel.getBillById(bill_id);
+    if (!bill) {
+      throw new Error('Bill not found');
+    }
+
+    console.log('📊 Current bill state:', {
+      subtotal: bill.subtotal,
+      discount_total: bill.discount_total,
+      service_charge_total: bill.service_charge_total,
+      tax_total: bill.tax_total,
+      grand_total: bill.grand_total
+    });
+
+    // Get bill items
+    const billItems = await OrderModel.getBillItems(bill_id);
+    const order = await OrderModel.findById(bill.order_id);
+    
+    // Calculate subtotal from bill items, or use stored subtotal for amount-based splits
+    let subtotal = 0;
+    
+    if (billItems.length > 0) {
+      // Item-based split: calculate from items
+      for (const item of billItems) {
+        subtotal += item.amount || 0;
+      }
+      subtotal = Math.round(subtotal);
+      console.log('📊 Item-based split, subtotal from items:', subtotal);
+    } else if (bill.subtotal && bill.subtotal > 0) {
+      // Amount-based split: use stored subtotal
+      subtotal = parseFloat(bill.subtotal);
+      console.log('📊 Amount-based split, using stored subtotal:', subtotal);
+    } else {
+      console.warn('⚠️ WARNING: No items found and bill.subtotal = 0. Cannot recalculate.');
+      // If we still can't determine subtotal, return early with current bill values
+      return {
+        subtotal: bill.subtotal,
+        discount_total: bill.discount_total,
+        service_charge_total: bill.service_charge_total,
+        tax_total: bill.tax_total,
+        grand_total: bill.grand_total
+      };
+    }
+    
+    console.log('📊 Final bill subtotal:', subtotal);
+    
+    // Validate subtotal is a valid number
+    if (!Number.isFinite(subtotal)) {
+      console.error('❌ Invalid subtotal:', subtotal);
+      throw new Error(`Invalid subtotal calculated: ${subtotal}`);
+    }
+    
+    // Get bill-specific discounts (where bill_id matches)
+    const billDiscountsResult = await pool.query(
+      `SELECT * FROM order_discounts 
+       WHERE order_id = $1 AND bill_id = $2
+       ORDER BY created_at DESC`,
+      [bill.order_id, bill_id]
+    );
+    
+    let discount_total = 0;
+    
+    // If there are bill-specific discounts, use them
+    if (billDiscountsResult.rows.length > 0) {
+      console.log('💰 Found bill-specific discounts:', billDiscountsResult.rows.length);
+      discount_total = billDiscountsResult.rows.reduce((sum, d) => {
+        const amount = parseFloat(d.amount);
+        // Validate amount is finite number
+        if (!Number.isFinite(amount)) {
+          console.warn(`⚠️ Warning: Invalid discount amount "${d.amount}", treating as 0`);
+          return sum;
+        }
+        return sum + amount;
+      }, 0);
+    } else {
+      // No bill-specific discounts, use proportional discount from order
+      discount_total = parseFloat(bill.discount_total) || 0;
+      // Validate amount is finite
+      if (!Number.isFinite(discount_total)) {
+        console.warn(`⚠️ Warning: Invalid discount_total "${bill.discount_total}", treating as 0`);
+        discount_total = 0;
+      }
+      console.log('💰 Using proportional discount from order:', discount_total);
+    }
+    
+    console.log('💰 Final bill discount_total:', discount_total);
+
+    // Amount after discount (base for tax calculation)
+    const amount_after_discount = subtotal - discount_total;
+    
+    console.log('💰 Amount after discount:', amount_after_discount);
+    if (!Number.isFinite(amount_after_discount)) {
+      console.error('❌ Invalid amount_after_discount:', amount_after_discount);
+      throw new Error(`Invalid amount after discount: ${amount_after_discount}`);
+    }
+
+    // Get tax rules
+    const taxRules = await TaxModel.findByStore(order.store_id);
+
+    let service_charge_total = 0;
+    let tax_total = 0;
+
+    // Calculate Service Charge (SC) - only for dine_in
+    const scRule = taxRules.find((t) => t.code === 'SC' && t.is_active);
+    if (scRule && order.order_type !== 'take_away') {
+      service_charge_total = Math.round((amount_after_discount * scRule.rate) / 100);
+      console.log('📊 SC calculated:', service_charge_total, 'from', amount_after_discount, '*', scRule.rate, '%');
+    }
+    
+    if (!Number.isFinite(service_charge_total)) {
+      console.error('❌ Invalid service_charge_total:', service_charge_total);
+      throw new Error(`Invalid service charge: ${service_charge_total}`);
+    }
+
+    // Calculate PB1 (Tax)
+    const pb1Rule = taxRules.find((t) => t.code === 'PB1' && t.is_active);
+    if (pb1Rule) {
+      const base_for_pb1 = amount_after_discount + service_charge_total;
+      tax_total = Math.round((base_for_pb1 * pb1Rule.rate) / 100);
+      console.log('📊 PB1 calculated:', tax_total, 'from', base_for_pb1, '*', pb1Rule.rate, '%');
+    }
+    
+    if (!Number.isFinite(tax_total)) {
+      console.error('❌ Invalid tax_total:', tax_total);
+      throw new Error(`Invalid tax total: ${tax_total}`);
+    }
+
+    // Calculate grand total
+    const grand_total_raw = subtotal - discount_total + service_charge_total + tax_total;
+    const grand_total = Math.round(grand_total_raw);
+    const rounding = grand_total - grand_total_raw;
+
+    console.log('✅ BILL TOTALS UPDATED:', {
+      subtotal,
+      discount_total,
+      service_charge_total,
+      tax_total,
+      grand_total
+    });
+
+    // Validate all values are finite numbers before updating
+    if (!Number.isFinite(subtotal) || !Number.isFinite(discount_total) || 
+        !Number.isFinite(service_charge_total) || !Number.isFinite(tax_total) ||
+        !Number.isFinite(grand_total) || !Number.isFinite(rounding)) {
+      console.error('❌ CRITICAL: NaN values detected in bill recalculation!');
+      console.error('   subtotal:', subtotal, 'isFinite:', Number.isFinite(subtotal));
+      console.error('   discount_total:', discount_total, 'isFinite:', Number.isFinite(discount_total));
+      console.error('   service_charge_total:', service_charge_total, 'isFinite:', Number.isFinite(service_charge_total));
+      console.error('   tax_total:', tax_total, 'isFinite:', Number.isFinite(tax_total));
+      console.error('   grand_total:', grand_total, 'isFinite:', Number.isFinite(grand_total));
+      console.error('   rounding:', rounding, 'isFinite:', Number.isFinite(rounding));
+      throw new Error('Invalid bill totals - contains NaN values');
+    }
+
+    // Update bill totals
+    await pool.query(
+      `UPDATE order_bills 
+       SET subtotal = $1, discount_total = $2, service_charge_total = $3, 
+           tax_total = $4, rounding = $5, grand_total = $6,
+           paid_total_updated_at = NOW()
+       WHERE id = $7`,
+      [subtotal, discount_total, service_charge_total, tax_total, rounding, grand_total, bill_id]
+    );
+
+    console.log('════════════════════════════════════════════════');
+    console.log('');
+
+    return {
+      subtotal,
+      discount_total,
+      service_charge_total,
+      tax_total,
+      rounding,
+      grand_total,
+    };
   }
 
   // Get bills with details
@@ -1503,8 +1913,36 @@ class OrderService {
             }
           }
         } else {
-          // Manual split by amount
-          subtotal = split.amount;
+          // Manual split by amount - reverse-calculate subtotal from grand total
+          // Frontend sends grand total (includes SC 5% + PB1 10%)
+          // grand_total = subtotal_after_discount * 1.155 (1.05 * 1.10)
+          // So: subtotal_after_discount = grand_total / 1.155
+          
+          const grandTotal = parseFloat(split.amount) || 0;
+          console.log(`\n💰 AMOUNT-BASED SPLIT ${i + 1}:`);
+          console.log(`   Raw split.amount: "${split.amount}" (type: ${typeof split.amount})`);
+          console.log(`   Parsed grandTotal: ${grandTotal}`);
+          
+          if (grandTotal === 0) {
+            console.error(`\n❌❌❌ CRITICAL: Split amount is 0! This will create a bill with 0 totals!`);
+            console.error(`   split object: ${JSON.stringify(split, null, 2)}`);
+            console.error(`   split_data array: ${JSON.stringify(split_data, null, 2)}`);
+          }
+          
+          const subtotalAfterDiscount = Math.round(grandTotal / 1.155);
+          console.log(`   Calculated subtotalAfterDiscount: ${grandTotal} / 1.155 = ${subtotalAfterDiscount}`);
+          
+          // Calculate subtotal BEFORE discount using discount ratio
+          if (discountRatio > 0) {
+            // subtotal = subtotal_after_discount / (1 - discountRatio)
+            subtotal = Math.round(subtotalAfterDiscount / (1 - discountRatio));
+            console.log(`   Has order discount (${(discountRatio*100).toFixed(1)}%):  ${subtotalAfterDiscount} / (1 - ${discountRatio}) = ${subtotal}`);
+          } else {
+            subtotal = subtotalAfterDiscount;
+            console.log(`   No order discount: subtotal = ${subtotal}`);
+          }
+          
+          console.log(`   Final calculated subtotal: ${subtotal}`);
         }
         
         subtotal = Math.round(subtotal);
@@ -1540,6 +1978,13 @@ class OrderService {
         const billNumberDisplay = `${order.order_number}-B${billNumberInt}`;
         
         // Create bill
+        console.log(`🛒 Creating bill ${billNumberInt}:
+          subtotal=${subtotal}, 
+          bill_discount=${bill_discount}, 
+          service_charge_total=${service_charge_total}, 
+          tax_total=${tax_total}, 
+          grand_total=${grand_total}`);
+        
         const billResult = await client.query(
           `INSERT INTO order_bills 
            (order_id, bill_number, label, subtotal, discount_total, service_charge_total, 
@@ -1564,8 +2009,17 @@ class OrderService {
         
         const billId = billResult.rows[0].id;
         
-        // If split by item, assign items to this bill
-        if (split_by === 'item') {
+        // For amount-based splits, we still need to save the split amount info
+        // so we can calculate promo discounts when paying
+        if (split_by === 'amount') {
+          // Store the calculated subtotal and totals as a reference
+          // We'll use a special marker item or store in bill metadata
+          // For now, create a placeholder entry that represents the split amount
+          console.log(`🔍 Amount-based split: saving reference amounts for bill ${billId}`);
+          console.log(`   subtotal=${subtotal}, subtotal_after_discount=${subtotal_after_discount}`);
+          console.log(`   SC=${service_charge_total}, Tax=${tax_total}, Grand=${grand_total}`);
+        } else if (split_by === 'item') {
+          // If split by item, assign items to this bill
           for (const item of items) {
             const itemAmount = item.qty * item.unit_price;
             console.log(`🔍 INSERT order_bill_items: bill_id=${billId}, order_item_id=${item.id}, qty=${item.qty}, amount=${itemAmount}`);
