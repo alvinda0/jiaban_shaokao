@@ -925,16 +925,35 @@ class OrderService {
       // Get bill items to calculate subtotal
       const billItems = await OrderModel.getBillItems(bill_id);
       
+      console.log('🔍 getBillItems result:', {
+        bill_id,
+        items_count: billItems?.length || 0,
+        items: billItems?.map(i => ({ order_item_id: i.order_item_id, amount: i.amount })) || []
+      });
+
       // For amount-based splits, there are no items, so use the bill's saved subtotal
       // For item-based splits, calculate from items
       let billSubtotal = 0;
       if (billItems.length > 0) {
-        billSubtotal = billItems.reduce((sum, item) => sum + item.amount, 0);
-        console.log('✅ Bill items found, subtotal:', billSubtotal);
-      } else if (bill.subtotal && bill.subtotal > 0) {
+        console.log('📊 Calculating subtotal from', billItems.length, 'items');
+        billSubtotal = billItems.reduce((sum, item) => {
+          const itemAmount = parseFloat(item.amount || 0);
+          console.log('  - Item amount:', item.amount, '→ parsed:', itemAmount, 'running sum:', sum + itemAmount);
+          return sum + itemAmount;
+        }, 0);
+        console.log('  - Before rounding:', billSubtotal);
+        billSubtotal = Math.round(billSubtotal);
+        console.log('✅ Bill items found, subtotal after rounding:', billSubtotal, 'isFinite:', Number.isFinite(billSubtotal));
+      } else if (bill.subtotal) {
         // No items found, use the bill's recorded subtotal (for amount-based splits)
-        billSubtotal = bill.subtotal;
-        console.log('✅ No items (amount-based split), using bill subtotal:', billSubtotal);
+        console.log('📊 No items found, using bill.subtotal:', bill.subtotal);
+        billSubtotal = parseFloat(bill.subtotal || 0);
+        if (!Number.isFinite(billSubtotal)) {
+          console.error('❌ Invalid bill.subtotal:', bill.subtotal, 'parsed as:', billSubtotal);
+          throw new Error(`Invalid bill subtotal: ${bill.subtotal}`);
+        }
+        billSubtotal = Math.round(billSubtotal);
+        console.log('✅ Using bill subtotal:', billSubtotal);
       } else {
         throw new Error(`Cannot determine bill subtotal: no items and bill.subtotal = ${bill.subtotal}`);
       }
@@ -948,7 +967,7 @@ class OrderService {
           subtotal: billSubtotal,
           items: billItems.map(item => {
             // Use unit_price from order_items, or calculate from amount/qty
-            const unitPrice = parseFloat(item.unit_price || 0) || (item.qty > 0 ? item.amount / item.qty : 0);
+            const unitPrice = parseFloat(item.unit_price || 0) || (item.qty > 0 ? parseFloat(item.amount || 0) / item.qty : 0);
             
             console.log('📦 Bill item:', {
               order_item_id: item.order_item_id,
@@ -985,8 +1004,35 @@ class OrderService {
         console.log('💰 Amount-based split, synthetic item with subtotal:', billSubtotal);
       }
 
+      // Validate cartData before passing to voucher service
+      console.log('🔍 Validating cartData:', {
+        subtotal: cartData.subtotal,
+        subtotal_type: typeof cartData.subtotal,
+        subtotal_isFinite: Number.isFinite(cartData.subtotal),
+        subtotal_isNumber: typeof cartData.subtotal === 'number',
+        items_count: cartData.items?.length || 0
+      });
+
+      if (cartData.subtotal === undefined || cartData.subtotal === null) {
+        console.error('❌ CRITICAL: cartData.subtotal is undefined or null!');
+        console.error('   billSubtotal was:', billSubtotal, 'type:', typeof billSubtotal);
+        console.error('   billItems.length was:', billItems.length);
+        throw new Error(`Cart subtotal is missing for voucher validation`);
+      }
+
+      if (!Number.isFinite(cartData.subtotal)) {
+        console.error('❌ CRITICAL: cartData.subtotal is not finite!', {
+          value: cartData.subtotal,
+          type: typeof cartData.subtotal,
+          isNaN: cartData.subtotal !== cartData.subtotal,
+          isInfinity: cartData.subtotal === Infinity || cartData.subtotal === -Infinity
+        });
+        throw new Error(`Invalid cart subtotal for voucher validation: ${cartData.subtotal}`);
+      }
+
       try {
         console.log('🎫 Validating voucher for bill:', { voucher_code, billSubtotal });
+        console.log('📦 cartData being sent to voucher validation:', JSON.stringify(cartData, null, 2));
         
         const voucherResult = await VoucherService.validateVoucher(
           voucher_code,
@@ -1006,6 +1052,16 @@ class OrderService {
         }
 
         // Add discount ONLY to this bill (not to order)
+        // First, delete any existing discounts for this bill (to avoid duplicates from retry attempts)
+        const deleteResult = await pool.query(
+          `DELETE FROM order_discounts 
+           WHERE order_id = $1 AND bill_id = $2 AND applied_stage = 'payment'`,
+          [order_id, bill_id]
+        );
+
+        console.log(`🗑️ Deleted ${deleteResult.rowCount} existing payment discounts for this bill`);
+
+        // Now add the new discount
         const discountResult = await OrderModel.addDiscount({
           order_id,
           order_item_id: null,
@@ -1261,13 +1317,23 @@ class OrderService {
       const allPayments = await OrderModel.getPayments(order_id);
       const totalPaidFromPayments = allPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
       
+      // IMPORTANT: Recalculate order's grand_total from all bills' grand_totals
+      // This accounts for discounts applied at payment time to individual bills
+      const calculatedOrderGrandTotal = allBills.reduce((sum, b) => sum + parseFloat(b.grand_total || 0), 0);
+      console.log(`📊 Recalculated order grand_total from bills:`, {
+        original_grand_total: order.grand_total,
+        calculated_grand_total: calculatedOrderGrandTotal,
+        bills_count: allBills.length,
+        bills: allBills.map(b => ({ bill_id: b.id, grand_total: b.grand_total }))
+      });
+      
       await OrderModel.updateTotals(order_id, {
         subtotal: order.subtotal,
         discount_total: order.discount_total,
         service_charge_total: order.service_charge_total,
         tax_total: order.tax_total,
         rounding: order.rounding || 0,
-        grand_total: order.grand_total,
+        grand_total: calculatedOrderGrandTotal,  // Use recalculated total
         paid_total: totalPaidFromPayments,
       });
       
@@ -1598,8 +1664,15 @@ class OrderService {
     
     if (billItems.length > 0) {
       // Item-based split: calculate from items
+      console.log('📊 Item-based split, calculating from', billItems.length, 'items');
       for (const item of billItems) {
-        subtotal += item.amount || 0;
+        const itemAmount = parseFloat(item.amount || 0);
+        console.log('  - Item amount:', item.amount, '→ parsed:', itemAmount);
+        if (!Number.isFinite(itemAmount)) {
+          console.warn('⚠️ Warning: Invalid item amount:', item.amount);
+          continue;
+        }
+        subtotal += itemAmount;
       }
       subtotal = Math.round(subtotal);
       console.log('📊 Item-based split, subtotal from items:', subtotal);
