@@ -1841,8 +1841,7 @@ class OrderService {
     await pool.query(
       `UPDATE order_bills 
        SET subtotal = $1, discount_total = $2, service_charge_total = $3, 
-           tax_total = $4, rounding = $5, grand_total = $6,
-           paid_total_updated_at = NOW()
+           tax_total = $4, rounding = $5, grand_total = $6
        WHERE id = $7`,
       [subtotal, discount_total, service_charge_total, tax_total, rounding, grand_total, bill_id]
     );

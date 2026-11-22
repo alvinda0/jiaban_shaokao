@@ -493,9 +493,9 @@ export default function Orders() {
       // Transform payment data to match backend format
       const backendPaymentData = {
         payment_method_id: paymentData.method, // Transform method to payment_method_id
-        amount: paymentData.amount,
-        tendered_amount: paymentData.tenderedAmount,
-        change_amount: paymentData.changeAmount,
+        amount: parseFloat(paymentData.amount),
+        tendered_amount: paymentData.tenderedAmount ? parseFloat(paymentData.tenderedAmount) : undefined,
+        change_amount: paymentData.changeAmount ? parseFloat(paymentData.changeAmount) : undefined,
         reference_no: paymentData.referenceNo,
         voucher_code: paymentData.promoCode,
         bill_id: billPaymentData.billId, // Important: pass bill_id for split payment
