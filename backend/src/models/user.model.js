@@ -16,13 +16,16 @@ class UserModel {
   }
 
   /**
-   * Find user by ID with role info
+   * Find user by ID with role and store info
    */
   static async findById(id) {
     const result = await pool.query(
-      `SELECT u.*, r.id AS role_id, r.name AS role_name
+      `SELECT u.id, u.name, u.email, u.store_id, u.is_active, u.created_at,
+              r.id AS role_id, r.name AS role_name,
+              s.name AS store_name, s.address, s.phone, s.is_active AS store_is_active, s.logo_url
        FROM users u
        JOIN roles r ON u.role_id = r.id
+       LEFT JOIN stores s ON u.store_id = s.id
        WHERE u.id = $1`,
       [id]
     );

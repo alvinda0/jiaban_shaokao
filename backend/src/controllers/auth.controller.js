@@ -105,7 +105,26 @@ const me = async (req, res) => {
 
     // Don't return password
     const { password, ...userData } = user;
-    return success(res, userData, 'Authenticated user');
+    
+    // Format response with store info
+    const response = {
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role_name,
+      store_id: userData.store_id,
+      is_active: userData.is_active,
+      created_at: userData.created_at,
+      store: userData.store_id ? {
+        name: userData.store_name,
+        address: userData.address,
+        phone: userData.phone,
+        is_active: userData.store_is_active,
+        logo_url: userData.logo_url
+      } : null
+    };
+    
+    return success(res, response, 'Authenticated user');
   } catch (err) {
     console.error(err);
     return error(res, 'Internal Server Error', 500);

@@ -4,8 +4,22 @@
   align-items: center;
   justify-content: center;
   background: #E8E8E8;
-  background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(239, 68, 68, 0.08), transparent);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   padding: 24px;
+  position: relative;
+}
+
+.page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 0;
 }
 
 .card {
@@ -18,7 +32,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 2px solid #000000;}
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
 
 .brand {
   display: flex;
@@ -26,8 +43,6 @@
   gap: 8px;
   margin-bottom: 12px;
 }
-
-.brandIcon { font-size: 22px; }
 
 .brandName {
   font-size: 16px;

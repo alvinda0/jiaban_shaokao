@@ -15,6 +15,13 @@ export interface User {
   created_at: string
   stores: StoreUser[]
   store_id?: string
+  store?: {
+    name: string
+    address: string
+    phone: string
+    is_active: boolean
+    logo_url: string
+  } | null
 }
 
 export interface Store {

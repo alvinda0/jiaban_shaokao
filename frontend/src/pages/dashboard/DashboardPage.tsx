@@ -81,38 +81,13 @@ function formatCurrency(value: number): string {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuthStore()
+  const { user, currentStoreId } = useAuthStore()
   const role = user?.role_name ?? ''
-  
-  // Superuser tidak punya store_id, perlu ambil dari database
-  const [stores, setStores] = useState<Array<{id: string; name: string}>>([])
-  const [selectedStore, setSelectedStore] = useState<string>('')
+  const selectedStore = currentStoreId || user?.store_id || ''
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (role === 'superuser') {
-      // Fetch stores untuk superuser
-      const token = localStorage.getItem('token')
-      if (token) {
-        fetch(`${API_BASE_URL}/stores`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-          .then(r => r.json())
-          .then(result => {
-            if (result.success && result.data?.length > 0) {
-              setStores(result.data)
-              setSelectedStore(result.data[0].id)
-            }
-          })
-          .catch(err => console.error('Error fetching stores:', err))
-      }
-    } else {
-      setSelectedStore(user?.store_id || '')
-    }
-  }, [role, user])
 
   useEffect(() => {
     console.log('🔍 Dashboard useEffect:', { selectedStore, role })
@@ -205,26 +180,6 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      {/* Header with Store Selector for Superuser */}
-      <div className={styles.header}>
-        {role === 'superuser' && stores.length > 0 && (
-          <div className={styles.storeSelector}>
-            <label>Pilih Store:</label>
-            <select 
-              value={selectedStore} 
-              onChange={(e) => setSelectedStore(e.target.value)}
-              className={styles.storeSelectorInput}
-            >
-              {stores.map(store => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
       {/* Stats */}
       <div className={styles.statsGrid}>
         {updatedStats.map(card => (

@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, getMe } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
+import logoImg from '@/assets/logo-printer.jpg'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -38,14 +39,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} style={{ backgroundImage: `url(${logoImg})` }}>
       <div className={styles.card}>
-
-        {/* Brand */}
-        <div className={styles.brand}>
-          <span className={styles.brandIcon}>🔥</span>
-          <span className={styles.brandName}>Shaokao POS</span>
-        </div>
 
         <h2 className={styles.title}>Masuk ke Dashboard</h2>
         <p className={styles.subtitle}>Masukkan kredensial akun Anda</p>
