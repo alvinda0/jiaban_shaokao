@@ -15,7 +15,8 @@ class ReportModel {
           SUM(o.discount_total) as discount_total,
           SUM(o.service_charge_total) as service_charge,
           SUM(o.tax_total) as tax_total,
-          SUM(o.grand_total) as total_revenue
+          SUM(o.grand_total) as total_revenue,
+          SUM(CASE WHEN o.is_complimentary THEN COALESCE(o.complimentary_amount, 0) ELSE 0 END) as complimentary_amount
         FROM orders o
         WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       `;
@@ -38,9 +39,10 @@ class ReportModel {
       const cogsData = cogsResult.rows[0] || { total_cogs: 0, total_items_sold: 0 };
 
       // C. LABA KOTOR
-      const grossProfit = (totalRevenue.total_revenue || 0) - (cogsData.total_cogs || 0);
-      const grossProfitMargin = totalRevenue.total_revenue 
-        ? ((grossProfit / totalRevenue.total_revenue) * 100).toFixed(2)
+      const totalRevenueWithComplimentary = (totalRevenue.total_revenue || 0) + (totalRevenue.complimentary_amount || 0);
+      const grossProfit = totalRevenueWithComplimentary - (cogsData.total_cogs || 0);
+      const grossProfitMargin = totalRevenueWithComplimentary
+        ? ((grossProfit / totalRevenueWithComplimentary) * 100).toFixed(2)
         : 0;
 
       // D. PENGELUARAN
@@ -70,8 +72,8 @@ class ReportModel {
 
       // E. LABA BERSIH
       const netProfit = grossProfit - totalOperatingExpenses;
-      const netProfitMargin = totalRevenue.total_revenue
-        ? ((netProfit / totalRevenue.total_revenue) * 100).toFixed(2)
+      const netProfitMargin = totalRevenueWithComplimentary
+        ? ((netProfit / totalRevenueWithComplimentary) * 100).toFixed(2)
         : 0;
 
       // Product Breakdown
@@ -103,8 +105,9 @@ class ReportModel {
           total_service_charge: parseFloat(totalRevenue.service_charge || 0),
           total_tax: parseFloat(totalRevenue.tax_total || 0),
           total_revenue: parseFloat(totalRevenue.total_revenue || 0),
+          complimentary_amount: parseFloat(totalRevenue.complimentary_amount || 0),
+          total_revenue_with_complimentary: parseFloat((totalRevenue.total_revenue || 0) + (totalRevenue.complimentary_amount || 0)),
           order_count: totalRevenue.order_count || 0,
-          complimentary: parseFloat((totalCompaymentExpense).toFixed(2)),
         },
         B_harga_pokok_penjualan: {
           total_cogs: parseFloat(cogsData.total_cogs || 0),
