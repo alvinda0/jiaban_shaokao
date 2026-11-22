@@ -9,8 +9,8 @@ export interface User {
   user_id?: string
   name: string
   email: string
-  role_name?: string
   role?: string
+  role_name?: string
   is_active: number
   created_at: string
   stores: StoreUser[]

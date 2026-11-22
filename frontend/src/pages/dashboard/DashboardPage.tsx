@@ -82,7 +82,7 @@ function formatCurrency(value: number): string {
 
 export default function DashboardPage() {
   const { user, currentStoreId } = useAuthStore()
-  const role = user?.role_name ?? ''
+  const role = (user?.role || user?.role_name) ?? ''
   const selectedStore = currentStoreId || user?.store_id || ''
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)

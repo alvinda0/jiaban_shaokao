@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
 
 export default function Sidebar() {
   const { user, currentStoreId, setCurrentStoreId } = useAuthStore()
-  const role = user?.role_name ?? ''
+  const role = (user?.role || user?.role_name) ?? ''
   const [currentStore, setCurrentStore] = useState<any>(null)
 
   // Determine logo URL

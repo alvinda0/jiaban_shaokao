@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>()(
         set({ token, user: user || null })
       },
       setUser: (user) => {
-        console.log('setUser called:', { userId: user.id, storeId: user.store_id, role: user.role_name })
+        console.log('setUser called:', { userId: user.id, storeId: user.store_id, role: user.role || user.role_name })
         set({ user })
         // Auto set currentStoreId dari user.store_id jika ada
         if (user.store_id) {
