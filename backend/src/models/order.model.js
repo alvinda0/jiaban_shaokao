@@ -704,7 +704,8 @@ class OrderModel {
   // Get payments for an order
   static async getPayments(order_id, bill_id = null) {
     let query = `
-      SELECT p.*, 
+      SELECT p.id, p.order_id, p.payment_method_id, p.amount, p.tendered_amount, p.change_amount, 
+             p.reference_no, p.received_by, p.status, p.paid_at,
              pm.name as payment_method_name, pm.type as payment_method_type,
              u.name as received_by_name
       FROM payments p
@@ -716,8 +717,9 @@ class OrderModel {
     const params = [order_id];
     
     if (bill_id) {
-      query += ` AND p.bill_id = $2`;
-      params.push(bill_id);
+      // bill_id check temporarily disabled until column is properly synced
+      // query += ` AND p.bill_id = $2`;
+      // params.push(bill_id);
     }
     
     query += ` AND p.status = 'paid' ORDER BY p.paid_at ASC`;
