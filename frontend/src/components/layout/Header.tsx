@@ -24,7 +24,7 @@ export default function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, clearAuth } = useAuthStore()
-  const role = user?.role_name ?? ''
+  const role = (user?.role || user?.role_name) ?? ''
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
