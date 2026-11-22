@@ -564,6 +564,19 @@ class OrderModel {
       applied_by,
     } = data;
 
+    console.log('💰 addDiscount called with:', {
+      order_id,
+      order_item_id,
+      bill_id,
+      bill_id_type: typeof bill_id,
+      bill_id_value: JSON.stringify(bill_id),
+      discount_id,
+      name,
+      type,
+      value,
+      amount,
+    });
+
     const result = await pool.query(
       `INSERT INTO order_discounts 
        (order_id, order_item_id, bill_id, discount_id, name, type, value, amount, applied_stage, approved_by, applied_by) 
