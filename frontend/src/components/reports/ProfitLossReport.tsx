@@ -296,8 +296,8 @@ export default function ProfitLossReport({ storeId }: Props) {
       <div className={styles.summaryCards}>
         <div className={`${styles.card} ${styles.revenue}`}>
           <div className={styles.label}>Total Pendapatan</div>
-          <div className={styles.value}>{formatCurrency(plData.A_pendapatan.total_revenue_with_complimentary)}</div>
-          <div className={styles.subtext}>{plData.A_pendapatan.order_count} pesanan (termasuk gratis)</div>
+          <div className={styles.value}>{formatCurrency(plData.A_pendapatan.total_revenue)}</div>
+          <div className={styles.subtext}>{plData.A_pendapatan.order_count} pesanan</div>
         </div>
         <div className={`${styles.card} ${styles.cogs}`}>
           <div className={styles.label}>PPH</div>
@@ -370,7 +370,7 @@ export default function ProfitLossReport({ storeId }: Props) {
               <div className={styles.content}>
                 <h3>Pendapatan</h3>
                 <div className={styles.metric}>
-                  <span>Total Penjualan:</span>
+                  <span>Total Penjualan (Dibayar):</span>
                   <span>{formatCurrency(plData.A_pendapatan.total_subtotal)}</span>
                 </div>
                 <div className={styles.metric}>
@@ -390,12 +390,12 @@ export default function ProfitLossReport({ storeId }: Props) {
                   <span>{formatCurrency(plData.A_pendapatan.total_tax)}</span>
                 </div>
                 <div className={`${styles.metric} ${styles.highlight}`}>
+                  <span>Total Pendapatan (Dibayar):</span>
+                  <span>{formatCurrency(plData.A_pendapatan.total_revenue)}</span>
+                </div>
+                <div className={`${styles.metric} ${styles.highlight}`}>
                   <span>Total Pendapatan (Termasuk Gratis):</span>
                   <span>{formatCurrency(plData.A_pendapatan.total_revenue_with_complimentary)}</span>
-                </div>
-                <div className={styles.metric}>
-                  <span>Total Pendapatan (Tanpa Gratis):</span>
-                  <span>{formatCurrency(plData.A_pendapatan.total_revenue)}</span>
                 </div>
               </div>
             )}

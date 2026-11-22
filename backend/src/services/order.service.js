@@ -1257,6 +1257,19 @@ class OrderService {
       amount
     });
 
+    // Get payment method details
+    const pmResult = await pool.query(
+      'SELECT code, type, name FROM payment_methods WHERE id = $1',
+      [resolvedPaymentMethodId]
+    );
+    const paymentMethod = pmResult.rows[0];
+    console.log('📋 Payment method:', paymentMethod);
+    console.log('🔍 Checking if complimentary:', {
+      code: paymentMethod?.code,
+      type: paymentMethod?.type,
+      isComplimentary: paymentMethod && (paymentMethod.code === 'COMPLIMENTARY' || paymentMethod.code?.toUpperCase() === 'COMPLIMENTARY' || paymentMethod.type === 'complimentary')
+    });
+
     // Add payment
     await OrderModel.addPayment({
       order_id,
@@ -1343,10 +1356,32 @@ class OrderService {
         console.log('🎉 All bills paid! Updating order status to PAID');
         await OrderModel.updateStatus(order_id, 'paid', { closed_at: new Date() });
       }
+
+      // Check if payment method is COMPLIMENTARY
+      if (paymentMethod && (paymentMethod.code?.toUpperCase() === 'COMPLIMENTARY' || paymentMethod.type?.toLowerCase() === 'complimentary')) {
+        console.log('🎁 Complimentary payment detected (split)! Setting order as complimentary');
+        await OrderModel.setComplimentary(order_id, {
+          is_complimentary: true,
+          complimentary_amount: amount,
+          complimentary_reason: 'Paid with COMPLIMENTARY method',
+          complimentary_by: received_by,
+        });
+      }
     } else {
       // Regular payment - check if fully paid
       if (total_paid >= order.grand_total) {
         await OrderModel.updateStatus(order_id, 'paid', { closed_at: new Date() });
+      }
+
+      // Check if payment method is COMPLIMENTARY
+      if (paymentMethod && (paymentMethod.code?.toUpperCase() === 'COMPLIMENTARY' || paymentMethod.type?.toLowerCase() === 'complimentary')) {
+        console.log('🎁 Complimentary payment detected (regular)! Setting order as complimentary');
+        await OrderModel.setComplimentary(order_id, {
+          is_complimentary: true,
+          complimentary_amount: amount,
+          complimentary_reason: 'Paid with COMPLIMENTARY method',
+          complimentary_by: received_by,
+        });
       }
     }
 

@@ -15,14 +15,38 @@ class ReportModel {
           SUM(o.discount_total) as discount_total,
           SUM(o.service_charge_total) as service_charge,
           SUM(o.tax_total) as tax_total,
-          SUM(o.grand_total) as total_revenue,
-          SUM(CASE WHEN o.is_complimentary THEN COALESCE(o.complimentary_amount, 0) ELSE 0 END) as complimentary_amount
+          SUM(o.grand_total) as total_revenue
         FROM orders o
         WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       `;
 
       const revenueResult = await pool.query(revenueQuery, params);
       const totalRevenue = revenueResult.rows[0] || {};
+
+      // Get actual discount from order_discounts table
+      const actualDiscountQuery = `
+        SELECT SUM(amount) as total_discount
+        FROM order_discounts od
+        INNER JOIN orders o ON od.order_id = o.id
+        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+      `;
+      
+      const discountResult = await pool.query(actualDiscountQuery, params);
+      const actualDiscount = parseFloat(discountResult.rows[0]?.total_discount || 0);
+
+      // Get complimentary from payments with COMPLIMENTARY method
+      const complimentaryQuery = `
+        SELECT SUM(p.amount) as total_complimentary
+        FROM payments p
+        INNER JOIN orders o ON p.order_id = o.id
+        INNER JOIN payment_methods pm ON p.payment_method_id = pm.id
+        WHERE o.store_id = $1 AND o.status = 'paid' 
+        AND LOWER(COALESCE(pm.code, '')) IN ('complimentary', 'gratis')
+        AND ${dateFilter}
+      `;
+
+      const complimentaryResult = await pool.query(complimentaryQuery, params);
+      const totalComplimentary = parseFloat(complimentaryResult.rows[0]?.total_complimentary || 0);
 
       // B. COGS
       const cogsQuery = `
@@ -39,7 +63,7 @@ class ReportModel {
       const cogsData = cogsResult.rows[0] || { total_cogs: 0, total_items_sold: 0 };
 
       // C. LABA KOTOR
-      const totalRevenueWithComplimentary = (totalRevenue.total_revenue || 0) + (totalRevenue.complimentary_amount || 0);
+      const totalRevenueWithComplimentary = (totalRevenue.total_revenue || 0) + totalComplimentary;
       const grossProfit = totalRevenueWithComplimentary - (cogsData.total_cogs || 0);
       const grossProfitMargin = totalRevenueWithComplimentary
         ? ((grossProfit / totalRevenueWithComplimentary) * 100).toFixed(2)
@@ -53,22 +77,21 @@ class ReportModel {
         WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       `;
 
-      const discountResult = await pool.query(discountQuery, params);
-      const discountExpense = parseFloat(discountResult.rows[0]?.total_discount || 0);
+      const discountExpenseResult = await pool.query(discountQuery, params);
+      const discountExpense = parseFloat(discountExpenseResult.rows[0]?.total_discount || 0);
 
       // Kompayment (Complimentary/Free Items & Orders)
-      const compaymentQuery = `
-        SELECT 
-          SUM(COALESCE(oi.line_total, 0)) + SUM(CASE WHEN o.is_complimentary THEN COALESCE(o.complimentary_amount, 0) ELSE 0 END) as total_complimentary
+      const compaymentItemQuery = `
+        SELECT SUM(COALESCE(oi.line_total, 0)) as total_complimentary
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND (oi.is_complimentary = true OR o.is_complimentary = true) AND ${dateFilter}
+        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.is_complimentary = true AND ${dateFilter}
       `;
 
-      const compaymentResult = await pool.query(compaymentQuery, params);
-      const totalCompaymentExpense = parseFloat(compaymentResult.rows[0]?.total_complimentary || 0);
+      const compaymentItemResult = await pool.query(compaymentItemQuery, params);
+      const totalCompaymentItemExpense = parseFloat(compaymentItemResult.rows[0]?.total_complimentary || 0);
 
-      const totalOperatingExpenses = discountExpense + totalCompaymentExpense;
+      const totalOperatingExpenses = discountExpense + totalComplimentary + totalCompaymentItemExpense;
 
       // E. LABA BERSIH
       const netProfit = grossProfit - totalOperatingExpenses;
@@ -101,12 +124,12 @@ class ReportModel {
         period: { date_from, date_to },
         A_pendapatan: {
           total_subtotal: parseFloat(totalRevenue.subtotal || 0),
-          total_discount: parseFloat(totalRevenue.discount_total || 0),
+          total_discount: parseFloat(actualDiscount),
           total_service_charge: parseFloat(totalRevenue.service_charge || 0),
           total_tax: parseFloat(totalRevenue.tax_total || 0),
           total_revenue: parseFloat(totalRevenue.total_revenue || 0),
-          complimentary_amount: parseFloat(totalRevenue.complimentary_amount || 0),
-          total_revenue_with_complimentary: parseFloat((totalRevenue.total_revenue || 0) + (totalRevenue.complimentary_amount || 0)),
+          complimentary_amount: parseFloat(totalComplimentary),
+          total_revenue_with_complimentary: parseFloat((totalRevenue.total_revenue || 0) + totalComplimentary),
           order_count: totalRevenue.order_count || 0,
         },
         B_harga_pokok_penjualan: {
@@ -122,7 +145,7 @@ class ReportModel {
         },
         D_pengeluaran: {
           discount_given: parseFloat((discountExpense).toFixed(2)),
-          complimentary: parseFloat((totalCompaymentExpense).toFixed(2)),
+          complimentary: parseFloat((totalComplimentary).toFixed(2)),
           refunds: 0,
           other_expenses: 0,
           total_expenses: parseFloat((totalOperatingExpenses).toFixed(2)),
