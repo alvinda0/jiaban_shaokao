@@ -390,11 +390,7 @@ export default function ProfitLossReport({ storeId }: Props) {
                   <span>{formatCurrency(plData.A_pendapatan.total_tax)}</span>
                 </div>
                 <div className={`${styles.metric} ${styles.highlight}`}>
-                  <span>Total Pendapatan (Dibayar):</span>
-                  <span>{formatCurrency(plData.A_pendapatan.total_revenue)}</span>
-                </div>
-                <div className={`${styles.metric} ${styles.highlight}`}>
-                  <span>Total Pendapatan (Termasuk Gratis):</span>
+                  <span>Total Pendapatan:</span>
                   <span>{formatCurrency(plData.A_pendapatan.total_revenue_with_complimentary)}</span>
                 </div>
               </div>

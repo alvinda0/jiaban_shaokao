@@ -47,6 +47,13 @@ class ReportModel {
 
       const complimentaryResult = await pool.query(complimentaryQuery, params);
       const totalComplimentary = parseFloat(complimentaryResult.rows[0]?.total_complimentary || 0);
+      
+      console.log('🔍 Complimentary Query Debug:', {
+        complimentaryQuery,
+        params,
+        complimentaryResult: complimentaryResult.rows[0],
+        totalComplimentary
+      });
 
       // B. COGS
       const cogsQuery = `
@@ -63,7 +70,7 @@ class ReportModel {
       const cogsData = cogsResult.rows[0] || { total_cogs: 0, total_items_sold: 0 };
 
       // C. LABA KOTOR
-      const totalRevenueWithComplimentary = (totalRevenue.total_revenue || 0) + totalComplimentary;
+      const totalRevenueWithComplimentary = (totalRevenue.total_revenue || 0) - totalComplimentary;
       const grossProfit = totalRevenueWithComplimentary - (cogsData.total_cogs || 0);
       const grossProfitMargin = totalRevenueWithComplimentary
         ? ((grossProfit / totalRevenueWithComplimentary) * 100).toFixed(2)
@@ -120,6 +127,12 @@ class ReportModel {
 
       const productResult = await pool.query(productQuery, params);
 
+      console.log('📊 Final Report Response:', {
+        total_revenue: parseFloat(totalRevenue.total_revenue || 0),
+        totalComplimentary,
+        total_revenue_with_complimentary: parseFloat((totalRevenue.total_revenue || 0) + totalComplimentary)
+      });
+
       return {
         period: { date_from, date_to },
         A_pendapatan: {
@@ -129,7 +142,7 @@ class ReportModel {
           total_tax: parseFloat(totalRevenue.tax_total || 0),
           total_revenue: parseFloat(totalRevenue.total_revenue || 0),
           complimentary_amount: parseFloat(totalComplimentary),
-          total_revenue_with_complimentary: parseFloat((totalRevenue.total_revenue || 0) + totalComplimentary),
+          total_revenue_with_complimentary: parseFloat((totalRevenue.total_revenue || 0) - totalComplimentary),
           order_count: totalRevenue.order_count || 0,
         },
         B_harga_pokok_penjualan: {
