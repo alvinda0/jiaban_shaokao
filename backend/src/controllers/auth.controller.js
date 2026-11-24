@@ -112,6 +112,7 @@ const me = async (req, res) => {
       name: userData.name,
       email: userData.email,
       role: userData.role_name,
+      role_name: userData.role_name,
       store_id: userData.store_id,
       is_active: userData.is_active,
       created_at: userData.created_at,
