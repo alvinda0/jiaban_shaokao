@@ -616,12 +616,14 @@ class OrderService {
   // ==================== ORDER CALCULATION ====================
 
   // Recalculate order totals (subtotal, discount, tax, service charge, grand total)
-  async recalculateOrderTotals(order_id, order_type) {
+  async recalculateOrderTotals(order_id, order_type, isMerge = false, isPayment = false) {
     console.log('');
     console.log('════════════════════════════════════════════════');
     console.log('🔍 RECALCULATE ORDER TOTALS START');
     console.log('════════════════════════════════════════════════');
     console.log('📝 Order ID:', order_id);
+    console.log('📝 Is Merge:', isMerge);
+    console.log('📝 Is Payment:', isPayment);
     
     // Get all order items (excluding void)
     const items = await OrderModel.getOrderItems(order_id);
@@ -673,17 +675,18 @@ class OrderService {
           }))
         };
         
-        // Check if this is a merge scenario (multiple discounts exist)
-        const isMergeScenario = existingDiscounts && existingDiscounts.length > 1;
-        
+        // IMPORTANT: If this is a merge operation, don't recalculate voucher - keep original amount
         if (existingVoucherDiscount) {
           // Discount already exists
           console.log(`✅ Voucher ${voucher_code} already applied with amount Rp ${existingVoucherDiscount.amount}`);
           
-          if (isMergeScenario) {
-            // This is a merge - don't recalculate voucher, keep original amounts
-            console.log(`✅ MERGE SCENARIO DETECTED (${existingDiscounts.length} discounts exist)`);
-            console.log(`   → Skipping voucher recalculation, keeping original discount amounts`);
+          if (isMerge || isPayment) {
+            // This is a merge or payment - don't recalculate voucher, keep original amounts
+            if (isMerge) {
+              console.log(`✅ MERGE DETECTED - Keeping original discount amounts without recalculation`);
+            } else {
+              console.log(`✅ PAYMENT DETECTED - Keeping existing discount amounts without recalculation`);
+            }
           } else {
             // Single order - recalculate voucher with current subtotal
             console.log(`   → RECALCULATING with current subtotal: Rp ${subtotal}`);
@@ -1172,7 +1175,8 @@ class OrderService {
 
       // Recalculate order totals (will apply voucher)
       console.log('🔄 Recalculating order totals before payment validation...');
-      await this.recalculateOrderTotals(order_id, order.order_type);
+      // Pass isPayment=true to prevent voucher recalculation (keep existing discount)
+      await this.recalculateOrderTotals(order_id, order.order_type, false, true);
       
       // Reload order to get updated grand_total
       order = await OrderModel.findById(order_id);
@@ -1190,7 +1194,8 @@ class OrderService {
         await this.recalculateBillTotals(bill_id);
       } else {
         console.log('🔄 Recalculating order totals...');
-        await this.recalculateOrderTotals(order_id, order.order_type);
+        // Pass isPayment=true to prevent voucher recalculation
+        await this.recalculateOrderTotals(order_id, order.order_type, false, true);
       }
       
       // Reload order
@@ -1593,10 +1598,13 @@ class OrderService {
     if (sourceDiscountsBefore && sourceDiscountsBefore.length > 0) {
       console.log('📝 Processing source discounts during merge...');
       
-      // IMPORTANT: Copy ALL discounts (including voucher) from source to target
+      // IMPORTANT: Copy ALL discounts (including voucher and split bill discounts) from source to target
       // Discount amounts are NOT recalculated - keep original amounts from each order
       for (const discount of sourceDiscountsBefore) {
-        const newName = `${discount.name} (dari ${sourceOrder.order_number})`;
+        const newName = discount.bill_id 
+          ? `${discount.name} (dari ${sourceOrder.order_number})` 
+          : discount.name;
+        
         await OrderModel.addDiscount({
           order_id: target_order_id,
           order_item_id: discount.order_item_id,
@@ -1608,8 +1616,9 @@ class OrderService {
           applied_stage: discount.applied_stage,
           approved_by: discount.approved_by,
           applied_by: discount.applied_by,
+          bill_id: null, // Don't copy bill_id - discount is now on order level, not specific bill
         });
-        console.log(`✅ Discount copied: ${newName} - Rp ${discount.amount} (NOT recalculated)`);
+        console.log(`✅ Discount copied: ${newName} - Rp ${discount.amount} (from bill: ${discount.bill_id || 'N/A'})`);
       }
     }
 
@@ -1633,7 +1642,8 @@ class OrderService {
 
     // Recalculate target order totals
     console.log('🔄 Starting recalculate...');
-    await this.recalculateOrderTotals(target_order_id, targetOrder.order_type);
+    // IMPORTANT: Pass merge flag to prevent voucher recalculation on merged orders
+    await this.recalculateOrderTotals(target_order_id, targetOrder.order_type, true);
 
     // Check discounts AFTER recalculate
     const targetDiscountsAfterRecalc = await OrderModel.getOrderDiscounts(target_order_id);

@@ -826,12 +826,11 @@ class OrderModel {
         [source_order_id]
       );
 
-      // Delete order_discounts from source order
-      await client.query(
-        `DELETE FROM order_discounts WHERE order_id = $1`,
-        [source_order_id]
-      );
-
+      // NOTE: Don't delete order_discounts here - they should have been copied to target
+      // in OrderService.mergeOrders BEFORE this function is called
+      // The DELETE below is now commented out to prevent loss of discount info
+      // If discounts weren't copied, this will preserve them for manual recovery
+      
       // Delete the source order completely
       const deleteResult = await client.query(
         `DELETE FROM orders WHERE id = $1 RETURNING order_number`,
