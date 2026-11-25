@@ -20,7 +20,44 @@ class OrderService {
 
   // Get full order details
   async getFullOrderDetails(order_id) {
-    return await OrderModel.getFullOrderDetails(order_id);
+    const order = await OrderModel.getFullOrderDetails(order_id);
+    
+    // If order is split, ensure all bills have correct totals
+    if (order && order.is_split && order.bills && order.bills.length > 0) {
+      console.log(`📋 Order ${order_id} is split, recalculating bill totals on GET...`);
+      
+      for (const bill of order.bills) {
+        try {
+          // Check if bill needs recalculation (tax = 0 for dine_in)
+          const needsRecalc = order.order_type !== 'take_away' && 
+                             parseFloat(bill.tax_total) === 0 && 
+                             parseFloat(bill.subtotal) > 0;
+          
+          if (needsRecalc) {
+            console.log(`  🔄 Bill ${bill.bill_number} needs recalculation (tax=0)`);
+            const updatedTotals = await this.recalculateBillTotals(bill.id);
+            
+            // Update bill in response with recalculated values
+            bill.subtotal = updatedTotals.subtotal;
+            bill.discount_total = updatedTotals.discount_total;
+            bill.service_charge_total = updatedTotals.service_charge_total;
+            bill.tax_total = updatedTotals.tax_total;
+            bill.rounding = updatedTotals.rounding;
+            bill.grand_total = updatedTotals.grand_total;
+            
+            console.log(`  ✅ Bill ${bill.bill_number} recalculated:`, {
+              tax_total: updatedTotals.tax_total,
+              grand_total: updatedTotals.grand_total
+            });
+          }
+        } catch (err) {
+          console.error(`  ❌ Error recalculating bill ${bill.bill_number}:`, err.message);
+          // Continue with other bills even if one fails
+        }
+      }
+    }
+    
+    return order;
   }
 
   // Create new order
@@ -1284,18 +1321,10 @@ class OrderService {
 
     // Get all payments
     const payments = await OrderModel.getPayments(order_id);
-    const total_paid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const total_paid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
-    // Update order paid_total
-    await OrderModel.updateTotals(order_id, {
-      subtotal: order.subtotal,
-      discount_total: order.discount_total,
-      service_charge_total: order.service_charge_total,
-      tax_total: order.tax_total,
-      rounding: order.rounding || 0,
-      grand_total: order.grand_total,
-      paid_total: total_paid,
-    });
+    // Split payment handling and order updates done below in the if/else block
+    // Don't update order yet - wait until we know the full context
 
     // Check if fully paid
     if (bill_id) {
@@ -1306,18 +1335,47 @@ class OrderService {
       const billPayments = await OrderModel.getPayments(order_id, bill_id);
       console.log(`💰 Bill payments:`, billPayments);
       
-      const bill_paid = billPayments.reduce((sum, p) => sum + p.amount, 0);
+      const bill_paid = billPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
       console.log(`💰 Total bill_paid: ${bill_paid}, grand_total: ${bill.grand_total}`);
 
       // Always update paid_total, and update status if fully paid
       const newStatus = bill_paid >= bill.grand_total ? 'paid' : 'unpaid';
+      
+      // DEBUG: Log what values we're about to update
+      console.log(`🔍 DEBUG: About to update bill ${bill_id}`);
+      console.log(`   Current DB paid_total: ${bill.paid_total}`);
+      console.log(`   New bill_paid value: ${bill_paid}`);
+      console.log(`   Bill grand_total: ${bill.grand_total}`);
+      
       await OrderModel.updateBillPaid(bill_id, bill_paid, newStatus);
       
       console.log(`✅ Bill ${bill_id} updated: paid_total=${bill_paid}, status=${newStatus}`);
 
       // Check if all bills are paid
       const allBills = await OrderModel.getOrderBills(order_id);
-      const allPaid = allBills.every((b) => {
+      
+      // IMPORTANT: Recalculate ALL bills to ensure correct grand_total for order calculation
+      // This ensures order grand_total is accurate even on first payment
+      console.log(`🔄 Recalculating ALL bills to ensure correct grand_total...`);
+      for (const bill of allBills) {
+        // Skip if bill was just updated (avoid redundant calculation)
+        if (bill.id !== bill_id) {
+          try {
+            const updatedTotals = await this.recalculateBillTotals(bill.id);
+            console.log(`  ✅ Bill ${bill.id} recalculated:`, {
+              tax_total: updatedTotals.tax_total,
+              grand_total: updatedTotals.grand_total
+            });
+          } catch (err) {
+            console.error(`  ⚠️ Failed to recalculate bill ${bill.id}:`, err.message);
+          }
+        }
+      }
+      
+      // Reload bills after recalculation
+      const allBillsRefreshed = await OrderModel.getOrderBills(order_id);
+      
+      const allPaid = allBillsRefreshed.every((b) => {
         // Refresh: check if this is the current bill
         if (b.id === bill_id) {
           return newStatus === 'paid';
@@ -1325,28 +1383,28 @@ class OrderService {
         return b.status === 'paid';
       });
       
-      // FIXED: Update order paid_total from all payments, not from bills
-      // This prevents duplicate accumulation when multiple bills are paid
+      // Calculate order paid_total from ALL payments (cumulative from all bills)
       const allPayments = await OrderModel.getPayments(order_id);
       const totalPaidFromPayments = allPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
       
-      // IMPORTANT: Recalculate order's grand_total from all bills' grand_totals
-      // This accounts for discounts applied at payment time to individual bills
-      const calculatedOrderGrandTotal = allBills.reduce((sum, b) => sum + parseFloat(b.grand_total || 0), 0);
+      // Calculate order grand_total from all bills' grand_totals (now recalculated)
+      const calculatedOrderGrandTotal = allBillsRefreshed.reduce((sum, b) => sum + parseFloat(b.grand_total || 0), 0);
       console.log(`📊 Recalculated order grand_total from bills:`, {
         original_grand_total: order.grand_total,
         calculated_grand_total: calculatedOrderGrandTotal,
-        bills_count: allBills.length,
-        bills: allBills.map(b => ({ bill_id: b.id, grand_total: b.grand_total }))
+        bills_count: allBillsRefreshed.length,
+        bills: allBillsRefreshed.map(b => ({ bill_id: b.id, grand_total: b.grand_total }))
       });
       
+      // Update ORDER only - do NOT touch bill paid_total again
+      // Bills are already updated individually above
       await OrderModel.updateTotals(order_id, {
         subtotal: order.subtotal,
         discount_total: order.discount_total,
         service_charge_total: order.service_charge_total,
         tax_total: order.tax_total,
         rounding: order.rounding || 0,
-        grand_total: calculatedOrderGrandTotal,  // Use recalculated total
+        grand_total: calculatedOrderGrandTotal,
         paid_total: totalPaidFromPayments,
       });
       
@@ -1368,7 +1426,19 @@ class OrderService {
         });
       }
     } else {
-      // Regular payment - check if fully paid
+      // Regular (non-split) payment - update order and check if fully paid
+      console.log('💰 Regular payment - updating order...');
+      
+      await OrderModel.updateTotals(order_id, {
+        subtotal: order.subtotal,
+        discount_total: order.discount_total,
+        service_charge_total: order.service_charge_total,
+        tax_total: order.tax_total,
+        rounding: order.rounding || 0,
+        grand_total: order.grand_total,
+        paid_total: total_paid,
+      });
+      
       if (total_paid >= order.grand_total) {
         await OrderModel.updateStatus(order_id, 'paid', { closed_at: new Date() });
       }
@@ -1664,6 +1734,25 @@ class OrderService {
       'UPDATE orders SET is_split = TRUE WHERE id = $1',
       [order_id]
     );
+
+    // IMPORTANT: Recalculate totals for all created bills to ensure correct tax calculation
+    // The proportional tax calculation above may have rounding issues,
+    // so we recalculate using the full recalculateBillTotals logic
+    console.log('🔄 Recalculating bill totals for all created bills in createSplitBills...');
+    for (let i = 0; i < createdBills.length; i++) {
+      try {
+        const updatedTotals = await this.recalculateBillTotals(createdBills[i].id);
+        // Update the returned bill data with recalculated totals
+        createdBills[i] = {
+          ...createdBills[i],
+          ...updatedTotals
+        };
+        console.log(`  ✅ Bill ${i + 1} recalculated:`, updatedTotals);
+      } catch (err) {
+        console.error(`  ❌ Failed to recalculate bill ${i + 1}:`, err.message);
+        // Don't fail the entire split if recalculation fails for one bill
+      }
+    }
 
     return createdBills;
   }
@@ -2155,13 +2244,34 @@ class OrderService {
       await client.query('COMMIT');
       console.log('✅ Split bill completed!\n');
       
+      // IMPORTANT: Recalculate totals for all created bills to ensure correct tax calculation
+      // The initial tax calculation during split may have rounding issues, 
+      // so we recalculate using the full recalculateBillTotals logic
+      console.log('🔄 Recalculating bill totals for all created bills...');
+      const recalculatedBills = [];
+      for (const bill of bills) {
+        try {
+          const updatedTotals = await this.recalculateBillTotals(bill.id);
+          recalculatedBills.push({
+            ...bill,
+            ...updatedTotals
+          });
+          console.log(`  ✅ Bill ${bill.bill_number} recalculated:`, updatedTotals);
+        } catch (err) {
+          console.error(`  ❌ Failed to recalculate bill ${bill.bill_number}:`, err.message);
+          // Don't fail the entire split if recalculation fails for one bill
+          // but log it for debugging
+          recalculatedBills.push(bill);
+        }
+      }
+      
       // Mark order as split
       await pool.query(
         'UPDATE orders SET is_split = TRUE WHERE id = $1',
         [order_id]
       );
       
-      return bills;
+      return recalculatedBills;
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('❌ Split bill failed:', error);

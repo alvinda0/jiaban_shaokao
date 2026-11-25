@@ -925,6 +925,14 @@ class OrderModel {
   // Update bill paid amount
   static async updateBillPaid(bill_id, paid_total, status) {
     try {
+      console.log(`🔍 updateBillPaid called with:`, {
+        bill_id,
+        paid_total,
+        status,
+        paid_total_type: typeof paid_total,
+        paid_total_isFinite: Number.isFinite(paid_total)
+      });
+      
       const result = await pool.query(
         `UPDATE order_bills 
          SET paid_total = $1, status = $2::bill_status, paid_at = CASE WHEN $2 = 'paid' THEN NOW() ELSE NULL END
@@ -1034,6 +1042,28 @@ class OrderModel {
       // Get payments for this specific bill
       bill.payments = await this.getBillPayments(bill.id);
     }
+    
+    // IMPORTANT: If order is split and has payments, recalculate bill totals
+    // to ensure they're consistent with actual payments received
+    // This handles the case where bills were created before fix or have pending recalculations
+    if (order.is_split && bills.length > 0 && order.paid_total > 0) {
+      console.log(`📋 Order is split with payments, ensuring bill totals are recalculated...`);
+      // Check if any bill has suspiciously low tax (0.00 for dine_in orders)
+      const needsRecalc = bills.some(bill => {
+        return order.order_type !== 'take_away' && parseFloat(bill.tax_total) === 0 && parseFloat(bill.subtotal) > 0;
+      });
+      
+      if (needsRecalc) {
+        console.log(`⚠️ Found bills with missing tax calculations, marking for recalculation`);
+        // Mark bills that need recalculation (will be done on first payment attempt)
+        for (let bill of bills) {
+          if (order.order_type !== 'take_away' && parseFloat(bill.tax_total) === 0 && parseFloat(bill.subtotal) > 0) {
+            bill._needs_recalculation = true;
+          }
+        }
+      }
+    }
+    
     order.bills = bills;
 
     // Sanitize numeric fields before returning (handle Infinity/NaN)
