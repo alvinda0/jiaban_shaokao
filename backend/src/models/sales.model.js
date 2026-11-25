@@ -103,17 +103,18 @@ class SalesModel {
 
     // Get overall summary
     // Note: Calculate discount from order_discounts table since order.discount_total may not be updated
+    // Note: Calculate complimentary from actual COMPLIMENTARY payments in payment methods
     const summaryQuery = `
       SELECT 
-        COUNT(DISTINCT o.id) as total_orders,
-        SUM(o.subtotal) as total_subtotal,
-        COALESCE(SUM(od.amount), 0) as total_discount,
-        SUM(o.service_charge_total) as total_service_charge,
-        SUM(o.tax_total) as total_tax,
-        SUM(o.rounding) as total_rounding,
-        SUM(o.grand_total) as total_grand_total,
-        AVG(o.grand_total) as avg_order_value,
-        COALESCE(SUM(DISTINCT o.complimentary_amount), 0) as total_complimentary
+        COUNT(DISTINCT CASE WHEN o.complimentary_amount = 0 THEN o.id END) as total_orders,
+        COUNT(DISTINCT CASE WHEN o.complimentary_amount > 0 THEN o.id END) as total_complimentary_orders,
+        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.subtotal ELSE 0 END) as total_subtotal,
+        COALESCE(SUM(CASE WHEN o.complimentary_amount = 0 THEN od.amount ELSE 0 END), 0) as total_discount,
+        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.service_charge_total ELSE 0 END) as total_service_charge,
+        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.tax_total ELSE 0 END) as total_tax,
+        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.rounding ELSE 0 END) as total_rounding,
+        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.grand_total ELSE 0 END) as total_grand_total,
+        AVG(CASE WHEN o.complimentary_amount = 0 THEN o.grand_total ELSE NULL END) as avg_order_value
       FROM orders o
       LEFT JOIN order_discounts od ON o.id = od.order_id
       WHERE o.store_id = $1 
@@ -123,11 +124,14 @@ class SalesModel {
 
     const summaryResult = await pool.query(summaryQuery, params);
     
+    // Extract complimentary total from payments results
+    const complimentaryTotal = paymentsResult.rows.find(pm => 
+      pm.payment_method?.toUpperCase().includes('COMPLIMENTARY') || pm.payment_type?.toUpperCase().includes('COMPLIMENTARY')
+    )?.total_amount || 0;
+    
     console.log('📊 Query Results:');
-    console.log('   Summary:', summaryResult.rows[0]);
-    console.log('   Products:', productsResult.rows.length);
-    console.log('   Discounts:', discountsResult.rows.length);
-    console.log('   Payments:', paymentsResult.rows.length);
+    console.log('   Summary orders:', summaryResult.rows[0]?.total_orders, 'complimentary:', complimentaryTotal);
+    console.log('   Products:', productsResult.rows.length, 'Discounts:', discountsResult.rows.length);
 
     // Get tax breakdown (PB1 details)
     const taxesQuery = `
@@ -147,6 +151,12 @@ class SalesModel {
 
     const taxesResult = await pool.query(taxesQuery, params);
 
+    // Merge summary with complimentary total
+    const mergedSummary = {
+      ...(summaryResult.rows[0] || {}),
+      total_complimentary: parseFloat(complimentaryTotal || 0),
+    };
+
     return {
       period: {
         date_from,
@@ -154,7 +164,7 @@ class SalesModel {
         time_from: time_from || '00:00:00',
         time_to: time_to || '23:59:59',
       },
-      summary: summaryResult.rows[0] || {
+      summary: mergedSummary || {
         total_orders: 0,
         total_subtotal: 0,
         total_discount: 0,

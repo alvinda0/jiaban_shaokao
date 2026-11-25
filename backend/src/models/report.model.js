@@ -17,7 +17,7 @@ class ReportModel {
           SUM(o.tax_total) as tax_total,
           SUM(o.grand_total) as total_revenue
         FROM orders o
-        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+        WHERE o.store_id = $1 AND o.status = 'paid' AND o.complimentary_amount = 0 AND ${dateFilter}
       `;
 
       const revenueResult = await pool.query(revenueQuery, params);
@@ -28,7 +28,7 @@ class ReportModel {
         SELECT SUM(amount) as total_discount
         FROM order_discounts od
         INNER JOIN orders o ON od.order_id = o.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+        WHERE o.store_id = $1 AND o.status = 'paid' AND o.complimentary_amount = 0 AND ${dateFilter}
       `;
       
       const discountResult = await pool.query(actualDiscountQuery, params);
@@ -63,7 +63,7 @@ class ReportModel {
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
         LEFT JOIN products p ON oi.product_id = p.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+        WHERE o.store_id = $1 AND o.status = 'paid' AND o.complimentary_amount = 0 AND oi.status != 'void' AND ${dateFilter}
       `;
 
       const cogsResult = await pool.query(cogsQuery, params);
@@ -81,7 +81,7 @@ class ReportModel {
         SELECT SUM(amount) as total_discount 
         FROM order_discounts od
         INNER JOIN orders o ON od.order_id = o.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
+        WHERE o.store_id = $1 AND o.status = 'paid' AND o.complimentary_amount = 0 AND ${dateFilter}
       `;
 
       const discountExpenseResult = await pool.query(discountQuery, params);
@@ -120,7 +120,7 @@ class ReportModel {
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
         LEFT JOIN products p ON oi.product_id = p.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+        WHERE o.store_id = $1 AND o.status = 'paid' AND o.complimentary_amount = 0 AND oi.status != 'void' AND ${dateFilter}
         GROUP BY oi.product_id, oi.product_name, oi.unit_price
         ORDER BY sales_value DESC
       `;
