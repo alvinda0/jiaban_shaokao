@@ -1043,9 +1043,36 @@ class OrderModel {
       bill.payments = await this.getBillPayments(bill.id);
     }
     
-    // IMPORTANT: If order is split and has payments, recalculate bill totals
-    // to ensure they're consistent with actual payments received
-    // This handles the case where bills were created before fix or have pending recalculations
+    // IMPORTANT: If order is split, recalculate order-level taxes as sum of bill taxes
+    // This ensures the order detail shows totals that match the split bills
+    if (order.is_split && bills.length > 0) {
+      let total_sc = 0;
+      let total_tax = 0;
+      let total_discount = 0;
+      let total_grand_total = 0;
+      
+      for (let bill of bills) {
+        total_sc += parseFloat(bill.service_charge_total || 0);
+        total_tax += parseFloat(bill.tax_total || 0);
+        total_discount += parseFloat(bill.discount_total || 0);
+        total_grand_total += parseFloat(bill.grand_total || 0);
+      }
+      
+      // Update order totals to reflect split bills
+      order.service_charge_total = Math.round(total_sc);
+      order.tax_total = Math.round(total_tax);
+      order.discount_total = Math.round(total_discount);
+      order.grand_total = Math.round(total_grand_total);
+      
+      console.log(`📋 Order is split, recalculated order-level totals from bills:`, {
+        service_charge_total: order.service_charge_total,
+        tax_total: order.tax_total,
+        discount_total: order.discount_total,
+        grand_total: order.grand_total
+      });
+    }
+    
+    // IMPORTANT: If order is split and has payments, ensure bill totals are consistent
     if (order.is_split && bills.length > 0 && order.paid_total > 0) {
       console.log(`📋 Order is split with payments, ensuring bill totals are recalculated...`);
       // Check if any bill has suspiciously low tax (0.00 for dine_in orders)
