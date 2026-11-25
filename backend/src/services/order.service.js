@@ -1204,6 +1204,75 @@ class OrderService {
 
     console.log('💰 Payment amount:', amount);
 
+    // Get payment method details EARLY to check if it's complimentary
+    let resolvedPaymentMethodId = payment_method_id;
+    
+    // Check if payment_method_id is not a UUID format (simple check for dashes)
+    if (payment_method_id && !payment_method_id.includes('-')) {
+      console.log('🔍 Resolving payment method code:', payment_method_id);
+      
+      // Try to find payment method by code
+      const result = await pool.query(
+        'SELECT id FROM payment_methods WHERE store_id = $1 AND code = $2 AND is_active = true LIMIT 1',
+        [order.store_id, payment_method_id]
+      );
+      
+      if (result.rows.length > 0) {
+        resolvedPaymentMethodId = result.rows[0].id;
+        console.log('✅ Resolved to payment method ID:', resolvedPaymentMethodId);
+      } else {
+        // Payment method not found, create a default one
+        console.log('⚠️ Payment method not found, creating default method for code:', payment_method_id);
+        
+        const insertResult = await pool.query(
+          `INSERT INTO payment_methods (store_id, code, name, type, is_active)
+           VALUES ($1, $2, $3, $4, true)
+           RETURNING id`,
+          [
+            order.store_id,
+            payment_method_id,
+            payment_method_id.toUpperCase(), // Use code as name
+            this.mapCodeToType(payment_method_id)
+          ]
+        );
+        
+        resolvedPaymentMethodId = insertResult.rows[0].id;
+        console.log('✅ Created payment method with ID:', resolvedPaymentMethodId);
+      }
+    }
+
+    // Get payment method details
+    const pmResult = await pool.query(
+      'SELECT code, type, name FROM payment_methods WHERE id = $1',
+      [resolvedPaymentMethodId]
+    );
+    const paymentMethod = pmResult.rows[0];
+    console.log('📋 Payment method:', paymentMethod);
+    console.log('🔍 Checking if complimentary:', {
+      code: paymentMethod?.code,
+      type: paymentMethod?.type,
+      isComplimentary: paymentMethod && (paymentMethod.code === 'COMPLIMENTARY' || paymentMethod.code?.toUpperCase() === 'COMPLIMENTARY' || paymentMethod.type === 'complimentary')
+    });
+
+    // SPECIAL HANDLING: If payment method is COMPLIMENTARY and amount is 0, set to full grand_total
+    if (paymentMethod && (paymentMethod.code?.toUpperCase() === 'COMPLIMENTARY' || paymentMethod.type?.toLowerCase() === 'complimentary')) {
+      if (!amount || amount === 0) {
+        // For complimentary payment, use the full order/bill grand_total
+        if (bill_id) {
+          const bill = await OrderModel.getBillById(bill_id);
+          if (!bill) {
+            throw new Error('Bill not found');
+          }
+          amount = parseFloat(bill.grand_total);
+        } else {
+          amount = parseFloat(order.grand_total);
+        }
+        console.log(`🎁 COMPLIMENTARY payment - setting amount to full total: Rp ${amount}`);
+      }
+    }
+
+    console.log('💰 Final payment amount:', amount);
+
     // VALIDATE: Payment amount must match order/bill grand_total (after recalculation)
     // Note: Skip validation if voucher will be applied, since totals will change
     if (!voucher_code) {
@@ -1255,62 +1324,6 @@ class OrderService {
       
       console.log('✅ Cash payment validated');
     }
-
-    // Resolve payment_method_id if it's a code (string not UUID format)
-    let resolvedPaymentMethodId = payment_method_id;
-    
-    // Check if payment_method_id is not a UUID format (simple check for dashes)
-    if (payment_method_id && !payment_method_id.includes('-')) {
-      console.log('🔍 Resolving payment method code:', payment_method_id);
-      
-      // Try to find payment method by code
-      const result = await pool.query(
-        'SELECT id FROM payment_methods WHERE store_id = $1 AND code = $2 AND is_active = true LIMIT 1',
-        [order.store_id, payment_method_id]
-      );
-      
-      if (result.rows.length > 0) {
-        resolvedPaymentMethodId = result.rows[0].id;
-        console.log('✅ Resolved to payment method ID:', resolvedPaymentMethodId);
-      } else {
-        // Payment method not found, create a default one
-        console.log('⚠️ Payment method not found, creating default method for code:', payment_method_id);
-        
-        const insertResult = await pool.query(
-          `INSERT INTO payment_methods (store_id, code, name, type, is_active)
-           VALUES ($1, $2, $3, $4, true)
-           RETURNING id`,
-          [
-            order.store_id,
-            payment_method_id,
-            payment_method_id.toUpperCase(), // Use code as name
-            this.mapCodeToType(payment_method_id)
-          ]
-        );
-        
-        resolvedPaymentMethodId = insertResult.rows[0].id;
-        console.log('✅ Created payment method with ID:', resolvedPaymentMethodId);
-      }
-    }
-
-    console.log('💰 Adding payment:', {
-      order_id,
-      payment_method_id: resolvedPaymentMethodId,
-      amount
-    });
-
-    // Get payment method details
-    const pmResult = await pool.query(
-      'SELECT code, type, name FROM payment_methods WHERE id = $1',
-      [resolvedPaymentMethodId]
-    );
-    const paymentMethod = pmResult.rows[0];
-    console.log('📋 Payment method:', paymentMethod);
-    console.log('🔍 Checking if complimentary:', {
-      code: paymentMethod?.code,
-      type: paymentMethod?.type,
-      isComplimentary: paymentMethod && (paymentMethod.code === 'COMPLIMENTARY' || paymentMethod.code?.toUpperCase() === 'COMPLIMENTARY' || paymentMethod.type === 'complimentary')
-    });
 
     // Add payment
     await OrderModel.addPayment({
