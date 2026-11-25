@@ -453,3 +453,24 @@ export const splitBill = async (storeId: string, orderId: string, data: {
 }) => {
   return api.post(`/stores/${storeId}/orders/${orderId}/split-bill`, data);
 };
+
+// Get sales report
+export const getSalesReport = async (
+  storeId: string,
+  filters: {
+    date_from: string;
+    date_to: string;
+    time_from?: string;
+    time_to?: string;
+  }
+): Promise<ApiResponse<any>> => {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      params.append(key, String(value));
+    }
+  });
+  
+  const res = await api.get<ApiResponse<any>>(`/stores/${storeId}/sales/report?${params.toString()}`);
+  return res.data;
+};

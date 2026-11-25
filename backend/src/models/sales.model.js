@@ -9,8 +9,9 @@ class SalesModel {
     const { date_from, date_to, time_from, time_to } = filters;
 
     // Build date-time filter
-    // Use COALESCE to fallback to opened_at if closed_at is NULL
-    let dateFilter = 'COALESCE(o.closed_at, o.opened_at) >= $2 AND COALESCE(o.closed_at, o.opened_at) <= $3';
+    // Use opened_at for filtering (more reliable than closed_at which may be null)
+    // Add timezone adjustment for Jakarta time
+    let dateFilter = `DATE(o.opened_at AT TIME ZONE 'Asia/Jakarta') >= $2::date AND DATE(o.opened_at AT TIME ZONE 'Asia/Jakarta') <= $3::date`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
@@ -18,12 +19,12 @@ class SalesModel {
     if (time_from && time_to) {
       dateFilter = `
         (
-          (DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') >= $2::date AND 
-           DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') <= $3::date)
-          AND
-          (CAST(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta' AS TIME) >= $${paramIndex}::time AND
-           CAST(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta' AS TIME) <= $${paramIndex + 1}::time)
+          DATE(o.opened_at AT TIME ZONE 'Asia/Jakarta') >= $2::date AND 
+          DATE(o.opened_at AT TIME ZONE 'Asia/Jakarta') <= $3::date
         )
+        AND
+        (CAST(o.opened_at AT TIME ZONE 'Asia/Jakarta' AS TIME) >= $${paramIndex}::time AND
+         CAST(o.opened_at AT TIME ZONE 'Asia/Jakarta' AS TIME) <= $${paramIndex + 1}::time)
       `;
       params.push(time_from, time_to);
       paramIndex += 2;
@@ -35,8 +36,10 @@ class SalesModel {
     console.log('   Date To:', date_to);
     console.log('   Time From:', time_from);
     console.log('   Time To:', time_to);
+    console.log('   Full params:', params);
 
     // Get products sold
+    // Include orders where paid_total > 0 (meaning at least partially paid)
     const productsQuery = `
       SELECT 
         oi.product_id,
@@ -48,12 +51,15 @@ class SalesModel {
       FROM order_items oi
       INNER JOIN orders o ON oi.order_id = o.id
       WHERE o.store_id = $1 
-        AND o.status = 'paid'
+        AND o.paid_total > 0
         AND oi.status != 'void'
         AND ${dateFilter}
       GROUP BY oi.product_id, oi.product_name, oi.unit_price
       ORDER BY oi.product_name ASC
     `;
+
+    console.log('📦 Products Query:', productsQuery);
+    console.log('   with params:', params);
 
     const productsResult = await pool.query(productsQuery, params);
 
@@ -68,7 +74,7 @@ class SalesModel {
       FROM order_discounts od
       INNER JOIN orders o ON od.order_id = o.id
       WHERE o.store_id = $1 
-        AND o.status = 'paid'
+        AND o.paid_total > 0
         AND ${dateFilter}
       GROUP BY od.name, od.type, od.applied_stage
       ORDER BY total_amount DESC
@@ -87,7 +93,6 @@ class SalesModel {
       INNER JOIN payment_methods pm ON p.payment_method_id = pm.id
       INNER JOIN orders o ON p.order_id = o.id
       WHERE o.store_id = $1 
-        AND o.status = 'paid'
         AND p.status = 'paid'
         AND ${dateFilter}
       GROUP BY pm.name, pm.type
@@ -97,19 +102,22 @@ class SalesModel {
     const paymentsResult = await pool.query(paymentsQuery, params);
 
     // Get overall summary
+    // Note: Calculate discount from order_discounts table since order.discount_total may not be updated
     const summaryQuery = `
       SELECT 
         COUNT(DISTINCT o.id) as total_orders,
         SUM(o.subtotal) as total_subtotal,
-        SUM(o.discount_total) as total_discount,
+        COALESCE(SUM(od.amount), 0) as total_discount,
         SUM(o.service_charge_total) as total_service_charge,
         SUM(o.tax_total) as total_tax,
         SUM(o.rounding) as total_rounding,
         SUM(o.grand_total) as total_grand_total,
-        AVG(o.grand_total) as avg_order_value
+        AVG(o.grand_total) as avg_order_value,
+        COALESCE(SUM(DISTINCT o.complimentary_amount), 0) as total_complimentary
       FROM orders o
+      LEFT JOIN order_discounts od ON o.id = od.order_id
       WHERE o.store_id = $1 
-        AND o.status = 'paid'
+        AND o.paid_total > 0
         AND ${dateFilter}
     `;
 
@@ -131,7 +139,7 @@ class SalesModel {
       FROM order_taxes ot
       INNER JOIN orders o ON ot.order_id = o.id
       WHERE o.store_id = $1 
-        AND o.status = 'paid'
+        AND o.paid_total > 0
         AND ${dateFilter}
       GROUP BY ot.code, ot.rate
       ORDER BY ot.code
@@ -155,6 +163,7 @@ class SalesModel {
         total_rounding: 0,
         total_grand_total: 0,
         avg_order_value: 0,
+        total_complimentary: 0,
       },
       products: productsResult.rows,
       discounts: discountsResult.rows,

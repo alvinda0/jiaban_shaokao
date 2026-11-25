@@ -4,8 +4,15 @@ class SalesController {
   // Get sales report by date range and time range
   static async getSalesReport(req, res) {
     try {
-      const { store_id } = req.params;
+      const { storeId } = req.params;
+      const store_id = storeId;
       const { date_from, date_to, time_from, time_to } = req.query;
+
+      console.log('🔍 getSalesReport called:');
+      console.log('   req.params:', req.params);
+      console.log('   storeId extracted:', storeId);
+      console.log('   store_id assigned:', store_id);
+      console.log('   query params:', { date_from, date_to, time_from, time_to });
 
       // Validate required parameters
       if (!date_from || !date_to) {
@@ -40,7 +47,8 @@ class SalesController {
   // Get detailed sales by payment method
   static async getSalesByPaymentMethod(req, res) {
     try {
-      const { store_id } = req.params;
+      const { storeId } = req.params;
+      const store_id = storeId;
       const { date_from, date_to, time_from, time_to } = req.query;
 
       if (!date_from || !date_to) {
@@ -74,7 +82,8 @@ class SalesController {
   // Get top selling products
   static async getTopProducts(req, res) {
     try {
-      const { store_id } = req.params;
+      const { storeId } = req.params;
+      const store_id = storeId;
       const { date_from, date_to, time_from, time_to, limit = 20 } = req.query;
 
       if (!date_from || !date_to) {
@@ -109,7 +118,8 @@ class SalesController {
   // Get sales summary by category
   static async getSalesByCategory(req, res) {
     try {
-      const { store_id } = req.params;
+      const { storeId } = req.params;
+      const store_id = storeId;
       const { date_from, date_to, time_from, time_to } = req.query;
 
       if (!date_from || !date_to) {
@@ -143,7 +153,8 @@ class SalesController {
   // Get discount breakdown
   static async getDiscountBreakdown(req, res) {
     try {
-      const { store_id } = req.params;
+      const { storeId } = req.params;
+      const store_id = storeId;
       const { date_from, date_to, time_from, time_to } = req.query;
 
       if (!date_from || !date_to) {

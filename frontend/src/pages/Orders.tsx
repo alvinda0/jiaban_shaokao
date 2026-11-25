@@ -15,6 +15,7 @@ import { MergeOrderModal } from '@/components/orders/MergeOrderModal';
 import { SplitBillModal } from '@/components/orders/SplitBillModal';
 import { ViewSplitBillsModal } from '@/components/orders/ViewSplitBillsModal';
 import { PaymentModal } from '@/components/orders/PaymentModal';
+import { SalesReportModal } from '@/components/orders/SalesReportModal';
 import * as orderService from '@/services/order.service';
 import * as voucherService from '@/services/voucher.service';
 import type { Order, OrderDetails } from '@/types/order';
@@ -59,6 +60,9 @@ export default function Orders() {
     serviceCharge: number;
     orderType: 'dine_in' | 'take_away' | 'takeaway' | 'delivery';
   } | null>(null);
+  
+  // Sales report modal
+  const [showSalesReportModal, setShowSalesReportModal] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -705,6 +709,9 @@ export default function Orders() {
             </div>
             <div className={styles.filterRight}>
               {/* WebSocket status hidden */}
+              <button onClick={() => setShowSalesReportModal(true)} className={styles.btnReport}>
+                📊 Laporan Penjualan
+              </button>
               <button onClick={() => loadOrders()} className={styles.btnRefresh}>
                 <RefreshCw size={16} />
                 Refresh
@@ -872,6 +879,15 @@ export default function Orders() {
           orderType={billPaymentData.orderType}
           availablePromos={availableVouchers}
           onPayment={handleBillPaymentSubmit}
+        />
+      )}
+
+      {/* Sales Report Modal */}
+      {currentStoreId && (
+        <SalesReportModal
+          isOpen={showSalesReportModal}
+          storeId={currentStoreId}
+          onClose={() => setShowSalesReportModal(false)}
         />
       )}
     </div>
