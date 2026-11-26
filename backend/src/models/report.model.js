@@ -232,7 +232,7 @@ class ReportModel {
         SUM(o.grand_total) as total_revenue,
         (SELECT SUM(oi2.line_total) FROM order_items oi2 
          INNER JOIN orders o2 ON oi2.order_id = o2.id 
-         WHERE o2.store_id = o.store_id AND o2.status = 'paid' AND oi2.status != 'void' 
+         WHERE o2.store_id = $1 AND o2.status = 'paid' AND oi2.status != 'void' 
          AND (COALESCE(o2.closed_at, o2.opened_at) AT TIME ZONE 'Asia/Jakarta')::date = (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date) as subtotal,
         SUM(o.discount_total) as discount_total,
         SUM(o.service_charge_total) as service_charge,
