@@ -101,13 +101,12 @@ class SalesModel {
 
     const paymentsResult = await pool.query(paymentsQuery, params);
 
-    // Get overall summary - INCLUDE ALL ORDERS
-    const summaryQuery = `
+    // Get overall summary - INCLUDE ALL ORDERS (use 2 separate queries to avoid JOIN duplication)
+    const ordersQuery = `
       SELECT 
         COUNT(DISTINCT o.id) as total_orders,
         COUNT(DISTINCT CASE WHEN o.complimentary_amount > 0 THEN o.id END) as total_complimentary_orders,
-        SUM(oi.line_total) as total_subtotal,
-        SUM(od.amount) as total_discount,
+        SUM(o.discount_total) as total_discount,
         SUM(o.service_charge_total) as total_service_charge,
         SUM(o.tax_total) as total_tax,
         SUM(o.rounding) as total_rounding,
@@ -116,6 +115,17 @@ class SalesModel {
         SUM(o.complimentary_amount) as total_complimentary_amount,
         AVG(o.grand_total) as avg_order_value
       FROM orders o
+      WHERE o.store_id = $1 
+        AND o.paid_total > 0
+        AND ${dateFilter}
+    `;
+
+    // Get subtotal and discount from order_items and order_discounts
+    const itemsQuery = `
+      SELECT 
+        SUM(oi.line_total) as total_subtotal,
+        SUM(COALESCE(od.amount, 0)) as total_discount_actual
+      FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
       LEFT JOIN order_discounts od ON o.id = od.order_id
       WHERE o.store_id = $1 
@@ -123,7 +133,27 @@ class SalesModel {
         AND ${dateFilter}
     `;
 
-    const summaryResult = await pool.query(summaryQuery, params);
+    const [ordersResult, itemsResult] = await Promise.all([
+      pool.query(ordersQuery, params),
+      pool.query(itemsQuery, params)
+    ]);
+
+    const ordersSummary = ordersResult.rows[0] || {};
+    const itemsSummary = itemsResult.rows[0] || {};
+
+    const summaryResult = {
+      total_orders: ordersSummary.total_orders,
+      total_complimentary_orders: ordersSummary.total_complimentary_orders,
+      total_subtotal: parseFloat(itemsSummary.total_subtotal || 0),
+      total_discount: parseFloat(itemsSummary.total_discount_actual || 0),
+      total_service_charge: parseFloat(ordersSummary.total_service_charge || 0),
+      total_tax: parseFloat(ordersSummary.total_tax || 0),
+      total_rounding: parseFloat(ordersSummary.total_rounding || 0),
+      total_grand_total: parseFloat(ordersSummary.total_grand_total || 0),
+      total_grand_total_after_complimentary: parseFloat(ordersSummary.total_grand_total_after_complimentary || 0),
+      total_complimentary_amount: parseFloat(ordersSummary.total_complimentary_amount || 0),
+      avg_order_value: parseFloat(ordersSummary.avg_order_value || 0),
+    };
     
     // Extract complimentary total from payments results
     const complimentaryTotal = paymentsResult.rows.find(pm => 
@@ -131,7 +161,7 @@ class SalesModel {
     )?.total_amount || 0;
     
     console.log('📊 Query Results:');
-    console.log('   Summary orders:', summaryResult.rows[0]?.total_orders, 'complimentary:', complimentaryTotal);
+    console.log('   Summary orders:', summaryResult.total_orders, 'complimentary:', complimentaryTotal);
     console.log('   Products:', productsResult.rows.length, 'Discounts:', discountsResult.rows.length);
 
     // Get tax breakdown (PB1 details)
@@ -154,7 +184,7 @@ class SalesModel {
 
     // Merge summary with complimentary total
     const mergedSummary = {
-      ...(summaryResult.rows[0] || {}),
+      ...summaryResult,
       total_complimentary: parseFloat(complimentaryTotal || 0),
     };
 
