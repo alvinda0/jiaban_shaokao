@@ -245,14 +245,15 @@ class ReportModel {
     try {
       const result = await pool.query(query, params);
       
-      // Group by date and aggregate
+      // Group by date and aggregate - avoid duplicating order-level fields
       const groupedByDate = {};
       result.rows.forEach(row => {
         const dateStr = row.date;
         if (!groupedByDate[dateStr]) {
           groupedByDate[dateStr] = {
             date: row.date,
-            order_count: 0,
+            orderIds: new Set(),
+            orderTotals: {}, // Store by order_id
             total_revenue: 0,
             discount_total: 0,
             service_charge: 0,
@@ -261,12 +262,20 @@ class ReportModel {
             subtotal: 0,
           };
         }
-        groupedByDate[dateStr].order_count += 1;
-        groupedByDate[dateStr].total_revenue += parseFloat(row.total_revenue || 0);
-        groupedByDate[dateStr].discount_total += parseFloat(row.discount_total || 0);
-        groupedByDate[dateStr].service_charge += parseFloat(row.service_charge || 0);
-        groupedByDate[dateStr].tax_total += parseFloat(row.tax_total || 0);
-        groupedByDate[dateStr].complimentary_total += parseFloat(row.complimentary_total || 0);
+        
+        // Track order IDs to count unique orders and avoid duplicate order-level fields
+        const orderId = row.id;
+        if (!groupedByDate[dateStr].orderIds.has(orderId)) {
+          groupedByDate[dateStr].orderIds.add(orderId);
+          // Add order-level fields only once per order
+          groupedByDate[dateStr].total_revenue += parseFloat(row.total_revenue || 0);
+          groupedByDate[dateStr].discount_total += parseFloat(row.discount_total || 0);
+          groupedByDate[dateStr].service_charge += parseFloat(row.service_charge || 0);
+          groupedByDate[dateStr].tax_total += parseFloat(row.tax_total || 0);
+          groupedByDate[dateStr].complimentary_total += parseFloat(row.complimentary_total || 0);
+        }
+        
+        // Always add subtotal (can have multiple rows per order due to LEFT JOIN)
         groupedByDate[dateStr].subtotal += parseFloat(row.subtotal || 0);
       });
 
@@ -274,7 +283,7 @@ class ReportModel {
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .map(row => ({
           date: row.date,
-          order_count: row.order_count,
+          order_count: row.orderIds.size,
           total_revenue: row.total_revenue,
           subtotal: row.subtotal,
           discount_total: row.discount_total,
