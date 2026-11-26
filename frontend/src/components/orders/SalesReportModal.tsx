@@ -25,6 +25,7 @@ interface SalesReport {
     total_tax: number;
     total_rounding: number;
     total_grand_total: number;
+    total_grand_total_after_complimentary: number;
     avg_order_value: number;
     total_complimentary: number;
   };
@@ -222,6 +223,13 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
                   </div>
                 </div>
 
+                <div className={styles.card + ' ' + styles.cardHighlight}>
+                  <div className={styles.cardLabel}>Penjualan Netto</div>
+                  <div className={styles.cardValue}>
+                    Rp {Math.round(reportData.summary.total_grand_total_after_complimentary || 0).toLocaleString('id-ID')}
+                  </div>
+                </div>
+
                 <div className={styles.card}>
                   <div className={styles.cardLabel}>Total Diskon</div>
                   <div className={styles.cardValue}>
@@ -247,13 +255,6 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
                   <div className={styles.cardLabel}>Complimentary</div>
                   <div className={styles.cardValue}>
                     Rp {Math.round(reportData.summary.total_complimentary || 0).toLocaleString('id-ID')}
-                  </div>
-                </div>
-
-                <div className={styles.card + ' ' + styles.cardHighlight}>
-                  <div className={styles.cardLabel}>Subtotal Bersih</div>
-                  <div className={styles.cardValue}>
-                    Rp {Math.round(reportData.summary.total_subtotal || 0).toLocaleString('id-ID')}
                   </div>
                 </div>
               </div>
