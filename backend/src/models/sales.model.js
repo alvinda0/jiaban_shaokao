@@ -101,21 +101,22 @@ class SalesModel {
 
     const paymentsResult = await pool.query(paymentsQuery, params);
 
-    // Get overall summary
-    // Note: Calculate discount from order_discounts table since order.discount_total may not be updated
-    // Note: Calculate complimentary from actual COMPLIMENTARY payments in payment methods
+    // Get overall summary - INCLUDE ALL ORDERS
     const summaryQuery = `
       SELECT 
-        COUNT(DISTINCT CASE WHEN o.complimentary_amount = 0 THEN o.id END) as total_orders,
+        COUNT(DISTINCT o.id) as total_orders,
         COUNT(DISTINCT CASE WHEN o.complimentary_amount > 0 THEN o.id END) as total_complimentary_orders,
-        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.subtotal ELSE 0 END) as total_subtotal,
-        COALESCE(SUM(CASE WHEN o.complimentary_amount = 0 THEN od.amount ELSE 0 END), 0) as total_discount,
-        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.service_charge_total ELSE 0 END) as total_service_charge,
-        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.tax_total ELSE 0 END) as total_tax,
-        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.rounding ELSE 0 END) as total_rounding,
-        SUM(CASE WHEN o.complimentary_amount = 0 THEN o.grand_total ELSE 0 END) as total_grand_total,
-        AVG(CASE WHEN o.complimentary_amount = 0 THEN o.grand_total ELSE NULL END) as avg_order_value
+        SUM(oi.line_total) as total_subtotal,
+        SUM(od.amount) as total_discount,
+        SUM(o.service_charge_total) as total_service_charge,
+        SUM(o.tax_total) as total_tax,
+        SUM(o.rounding) as total_rounding,
+        SUM(o.grand_total) as total_grand_total,
+        (SUM(o.grand_total) - SUM(o.complimentary_amount)) as total_grand_total_after_complimentary,
+        SUM(o.complimentary_amount) as total_complimentary_amount,
+        AVG(o.grand_total) as avg_order_value
       FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
       LEFT JOIN order_discounts od ON o.id = od.order_id
       WHERE o.store_id = $1 
         AND o.paid_total > 0
