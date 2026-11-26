@@ -227,35 +227,61 @@ class ReportModel {
 
     const query = `
       SELECT 
-        (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date as date,
+        DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') as date,
         COUNT(DISTINCT o.id) as order_count,
         SUM(o.grand_total) as total_revenue,
-        (SELECT SUM(oi2.line_total) FROM order_items oi2 
-         INNER JOIN orders o2 ON oi2.order_id = o2.id 
-         WHERE o2.store_id = $1 AND o2.status = 'paid' AND oi2.status != 'void' 
-         AND (COALESCE(o2.closed_at, o2.opened_at) AT TIME ZONE 'Asia/Jakarta')::date = (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date) as subtotal,
         SUM(o.discount_total) as discount_total,
         SUM(o.service_charge_total) as service_charge,
         SUM(o.tax_total) as tax_total,
-        SUM(o.complimentary_amount) as complimentary_total
+        SUM(o.complimentary_amount) as complimentary_total,
+        SUM(oi.line_total) as subtotal
       FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
       WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
-      GROUP BY (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date
+      GROUP BY DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta'), o.id
       ORDER BY date DESC
     `;
 
     try {
       const result = await pool.query(query, params);
-      return result.rows.map(row => ({
-        date: row.date,
-        order_count: row.order_count,
-        total_revenue: parseFloat(row.total_revenue || 0),
-        subtotal: parseFloat(row.subtotal || 0),
-        discount_total: parseFloat(row.discount_total || 0),
-        service_charge: parseFloat(row.service_charge || 0),
-        tax_total: parseFloat(row.tax_total || 0),
-        complimentary_total: parseFloat(row.complimentary_total || 0),
-      }));
+      
+      // Group by date and aggregate
+      const groupedByDate = {};
+      result.rows.forEach(row => {
+        const dateStr = row.date;
+        if (!groupedByDate[dateStr]) {
+          groupedByDate[dateStr] = {
+            date: row.date,
+            order_count: 0,
+            total_revenue: 0,
+            discount_total: 0,
+            service_charge: 0,
+            tax_total: 0,
+            complimentary_total: 0,
+            subtotal: 0,
+          };
+        }
+        groupedByDate[dateStr].order_count += 1;
+        groupedByDate[dateStr].total_revenue += parseFloat(row.total_revenue || 0);
+        groupedByDate[dateStr].discount_total += parseFloat(row.discount_total || 0);
+        groupedByDate[dateStr].service_charge += parseFloat(row.service_charge || 0);
+        groupedByDate[dateStr].tax_total += parseFloat(row.tax_total || 0);
+        groupedByDate[dateStr].complimentary_total += parseFloat(row.complimentary_total || 0);
+        groupedByDate[dateStr].subtotal += parseFloat(row.subtotal || 0);
+      });
+
+      return Object.values(groupedByDate)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map(row => ({
+          date: row.date,
+          order_count: row.order_count,
+          total_revenue: row.total_revenue,
+          subtotal: row.subtotal,
+          discount_total: row.discount_total,
+          service_charge: row.service_charge,
+          tax_total: row.tax_total,
+          complimentary_total: row.complimentary_total,
+        }));
     } catch (error) {
       console.error('❌ getDailyRevenue error:', error);
       throw error;
