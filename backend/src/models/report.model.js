@@ -229,25 +229,44 @@ class ReportModel {
       SELECT 
         DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') as date,
         COUNT(DISTINCT o.id) as order_count,
-        SUM(o.grand_total) as total_revenue,
+        (SUM(o.grand_total) - SUM(o.complimentary_amount)) as total_revenue,
         SUM(o.discount_total) as discount_total,
         SUM(o.service_charge_total) as service_charge,
         SUM(o.tax_total) as tax_total,
-        SUM(o.complimentary_amount) as complimentary_total,
-        SUM(oi.line_total) as subtotal
+        SUM(o.complimentary_amount) as complimentary_total
       FROM orders o
-      LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
       WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       GROUP BY DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')
     `;
 
+    // Separate query for subtotal
+    const subtotalQuery = `
+      SELECT 
+        DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') as date,
+        SUM(oi.line_total) as subtotal
+      FROM order_items oi
+      INNER JOIN orders o ON oi.order_id = o.id
+      WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+      GROUP BY DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')
+    `;
+
     try {
-      const result = await pool.query(query, params);
-      return result.rows.map(row => ({
+      const [revenueResult, subtotalResult] = await Promise.all([
+        pool.query(query, params),
+        pool.query(subtotalQuery, params)
+      ]);
+
+      // Merge results
+      const subtotalMap = {};
+      subtotalResult.rows.forEach(row => {
+        subtotalMap[row.date] = parseFloat(row.subtotal || 0);
+      });
+
+      return revenueResult.rows.map(row => ({
         date: row.date,
         order_count: parseInt(row.order_count),
         total_revenue: parseFloat(row.total_revenue || 0),
-        subtotal: parseFloat(row.subtotal || 0),
+        subtotal: subtotalMap[row.date] || 0,
         discount_total: parseFloat(row.discount_total || 0),
         service_charge: parseFloat(row.service_charge || 0),
         tax_total: parseFloat(row.tax_total || 0),
