@@ -371,7 +371,7 @@ export default function ProfitLossReport({ storeId }: Props) {
               <div className={styles.content}>
                 <h3>Pendapatan</h3>
                 <div className={styles.metric}>
-                  <span>Total Penjualan (Dibayar):</span>
+                  <span>Subtotal Item:</span>
                   <span>{formatCurrency(plData.A_pendapatan.total_subtotal)}</span>
                 </div>
                 <div className={styles.metric}>
@@ -379,7 +379,7 @@ export default function ProfitLossReport({ storeId }: Props) {
                   <span>{formatCurrency(plData.A_pendapatan.total_discount)}</span>
                 </div>
                 <div className={styles.metric}>
-                  <span>Kompayment (Gratis):</span>
+                  <span>Complimentary:</span>
                   <span>{formatCurrency(plData.A_pendapatan.complimentary_amount)}</span>
                 </div>
                 <div className={styles.metric}>
@@ -437,7 +437,7 @@ export default function ProfitLossReport({ storeId }: Props) {
                   <span>{formatCurrency(plData.D_pengeluaran.discount_given)}</span>
                 </div>
                 <div className={styles.metric}>
-                  <span>Kompayment (Gratis):</span>
+                  <span>Complimentary:</span>
                   <span>{formatCurrency(plData.D_pengeluaran.complimentary)}</span>
                 </div>
                 <div className={styles.metric}>
@@ -518,7 +518,7 @@ export default function ProfitLossReport({ storeId }: Props) {
                     <tr>
                       <th>Tanggal</th>
                       <th>Pesanan</th>
-                      <th>Total Penjualan</th>
+                      <th>Subtotal Item</th>
                       <th>Diskon</th>
                       <th>Complimentary</th>
                       <th>Biaya Layanan</th>
