@@ -8,18 +8,27 @@ class ReportModel {
 
     try {
       // A. PENDAPATAN
-      const revenueQuery = `
-        SELECT 
-          (SELECT COUNT(DISTINCT o2.id) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as order_count,
-          SUM(oi.line_total) as subtotal,
-          (SELECT SUM(discount_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as discount_total,
-          (SELECT SUM(service_charge_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as service_charge,
-          (SELECT SUM(tax_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as tax_total,
-          (SELECT SUM(grand_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as total_revenue
+      // Get subtotal from order items
+      const subtotalQuery = `
+        SELECT SUM(oi.line_total) as subtotal
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
-        LIMIT 1
+        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)
+      `;
+      
+      const subtotalResult = await pool.query(subtotalQuery, params);
+      const subtotal = parseFloat(subtotalResult.rows[0]?.subtotal || 0);
+
+      // Get order aggregates
+      const revenueQuery = `
+        SELECT 
+          COUNT(DISTINCT o.id) as order_count,
+          SUM(o.discount_total) as discount_total,
+          SUM(o.service_charge_total) as service_charge,
+          SUM(o.tax_total) as tax_total,
+          SUM(o.grand_total) as total_revenue
+        FROM orders o
+        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       `;
 
       const revenueResult = await pool.query(revenueQuery, params);
@@ -28,7 +37,8 @@ class ReportModel {
       console.log('🔍 Revenue Query Result:', {
         query: revenueQuery,
         params,
-        result: totalRevenue
+        result: totalRevenue,
+        subtotal
       });
 
       // Get actual discount from order_discounts table
@@ -147,7 +157,7 @@ class ReportModel {
       return {
         period: { date_from, date_to },
         A_pendapatan: {
-          total_subtotal: parseFloat(totalRevenue.subtotal || 0),
+          total_subtotal: subtotal,
           total_discount: parseFloat(actualDiscount),
           total_service_charge: parseFloat(totalRevenue.service_charge || 0),
           total_tax: parseFloat(totalRevenue.tax_total || 0),
@@ -220,13 +230,15 @@ class ReportModel {
         (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date as date,
         COUNT(DISTINCT o.id) as order_count,
         SUM(o.grand_total) as total_revenue,
-        SUM(oi.line_total) as subtotal,
+        (SELECT SUM(oi2.line_total) FROM order_items oi2 
+         INNER JOIN orders o2 ON oi2.order_id = o2.id 
+         WHERE o2.store_id = o.store_id AND o2.status = 'paid' AND oi2.status != 'void' 
+         AND (COALESCE(o2.closed_at, o2.opened_at) AT TIME ZONE 'Asia/Jakarta')::date = (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date) as subtotal,
         SUM(o.discount_total) as discount_total,
         SUM(o.service_charge_total) as service_charge,
         SUM(o.tax_total) as tax_total,
         SUM(o.complimentary_amount) as complimentary_total
       FROM orders o
-      LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
       WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       GROUP BY (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date
       ORDER BY date DESC
