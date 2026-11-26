@@ -911,7 +911,7 @@ class OrderService {
   async addPayment(order_id, paymentData) {
     const {
       payment_method_id,
-      amount,
+      amount: initialAmount,
       tendered_amount,
       change_amount,
       reference_no,
@@ -919,6 +919,8 @@ class OrderService {
       bill_id,
       voucher_code, // Accept voucher code from payment
     } = paymentData;
+
+    let amount = initialAmount; // Allow reassignment for COMPLIMENTARY
 
     let order = await OrderModel.findById(order_id);
     if (!order) {
