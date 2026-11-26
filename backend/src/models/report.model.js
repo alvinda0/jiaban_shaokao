@@ -212,7 +212,8 @@ class ReportModel {
         SUM(o.subtotal) as subtotal,
         SUM(o.discount_total) as discount_total,
         SUM(o.service_charge_total) as service_charge,
-        SUM(o.tax_total) as tax_total
+        SUM(o.tax_total) as tax_total,
+        SUM(o.complimentary_amount) as complimentary_total
       FROM orders o
       WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
       GROUP BY (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date
@@ -229,6 +230,7 @@ class ReportModel {
         discount_total: parseFloat(row.discount_total || 0),
         service_charge: parseFloat(row.service_charge || 0),
         tax_total: parseFloat(row.tax_total || 0),
+        complimentary_total: parseFloat(row.complimentary_total || 0),
       }));
     } catch (error) {
       console.error('❌ getDailyRevenue error:', error);

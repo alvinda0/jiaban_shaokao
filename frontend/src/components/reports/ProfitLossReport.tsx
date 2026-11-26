@@ -11,6 +11,7 @@ interface DailyRevenueData {
   discount_total: number
   service_charge: number
   tax_total: number
+  complimentary_total: number
 }
 
 interface TopProduct {
@@ -519,6 +520,7 @@ export default function ProfitLossReport({ storeId }: Props) {
                       <th>Pesanan</th>
                       <th>Total Penjualan</th>
                       <th>Diskon</th>
+                      <th>Complimentary</th>
                       <th>Biaya Layanan</th>
                       <th>Pajak</th>
                       <th>Pendapatan</th>
@@ -531,6 +533,7 @@ export default function ProfitLossReport({ storeId }: Props) {
                         <td>{row.order_count}</td>
                         <td>{formatCurrency(row.subtotal)}</td>
                         <td>{formatCurrency(row.discount_total)}</td>
+                        <td>{formatCurrency(row.complimentary_total)}</td>
                         <td>{formatCurrency(row.service_charge)}</td>
                         <td>{formatCurrency(row.tax_total)}</td>
                         <td className={styles.highlight}>{formatCurrency(row.total_revenue)}</td>
