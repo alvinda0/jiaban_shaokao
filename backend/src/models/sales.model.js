@@ -120,32 +120,46 @@ class SalesModel {
         AND ${dateFilter}
     `;
 
-    // Get subtotal and discount from order_items and order_discounts
-    const itemsQuery = `
+    // Get subtotal from order_items
+    const subtotalQuery = `
       SELECT 
-        SUM(oi.line_total) as total_subtotal,
-        SUM(COALESCE(od.amount, 0)) as total_discount_actual
-      FROM orders o
-      LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
-      LEFT JOIN order_discounts od ON o.id = od.order_id
+        SUM(oi.line_total) as total_subtotal
+      FROM order_items oi
+      INNER JOIN orders o ON oi.order_id = o.id
       WHERE o.store_id = $1 
+        AND o.status = 'paid'
+        AND oi.status != 'void'
         AND o.paid_total > 0
         AND ${dateFilter}
     `;
 
-    const [ordersResult, itemsResult] = await Promise.all([
+    // Get discount from order_discounts
+    const discountQuery = `
+      SELECT 
+        SUM(od.amount) as total_discount
+      FROM order_discounts od
+      INNER JOIN orders o ON od.order_id = o.id
+      WHERE o.store_id = $1 
+        AND o.status = 'paid'
+        AND o.paid_total > 0
+        AND ${dateFilter}
+    `;
+
+    const [ordersResult, subtotalResult, discountResult] = await Promise.all([
       pool.query(ordersQuery, params),
-      pool.query(itemsQuery, params)
+      pool.query(subtotalQuery, params),
+      pool.query(discountQuery, params)
     ]);
 
     const ordersSummary = ordersResult.rows[0] || {};
-    const itemsSummary = itemsResult.rows[0] || {};
+    const subtotalData = subtotalResult.rows[0] || {};
+    const discountData = discountResult.rows[0] || {};
 
     const summaryResult = {
       total_orders: ordersSummary.total_orders,
       total_complimentary_orders: ordersSummary.total_complimentary_orders,
-      total_subtotal: parseFloat(itemsSummary.total_subtotal || 0),
-      total_discount: parseFloat(itemsSummary.total_discount_actual || 0),
+      total_subtotal: parseFloat(subtotalData.total_subtotal || 0),
+      total_discount: parseFloat(discountData.total_discount || 0),
       total_service_charge: parseFloat(ordersSummary.total_service_charge || 0),
       total_tax: parseFloat(ordersSummary.total_tax || 0),
       total_rounding: parseFloat(ordersSummary.total_rounding || 0),
