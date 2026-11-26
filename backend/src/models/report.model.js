@@ -10,16 +10,16 @@ class ReportModel {
       // A. PENDAPATAN
       const revenueQuery = `
         SELECT 
-          COUNT(DISTINCT o.id) as order_count,
+          (SELECT COUNT(DISTINCT o2.id) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as order_count,
           SUM(oi.line_total) as subtotal,
-          SUM(o.discount_total) as discount_total,
-          SUM(o.service_charge_total) as service_charge,
-          SUM(o.tax_total) as tax_total,
-          SUM(o.grand_total) as total_revenue
-        FROM orders o
-        LEFT JOIN order_items oi ON o.id = oi.order_id AND oi.status != 'void'
-        WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
-        GROUP BY o.store_id
+          (SELECT SUM(discount_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as discount_total,
+          (SELECT SUM(service_charge_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as service_charge,
+          (SELECT SUM(tax_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as tax_total,
+          (SELECT SUM(grand_total) FROM orders o2 WHERE o2.store_id = $1 AND o2.status = 'paid' AND ${dateFilter}) as total_revenue
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
+        LIMIT 1
       `;
 
       const revenueResult = await pool.query(revenueQuery, params);
