@@ -211,10 +211,15 @@
   transition: all 0.2s;
 }
 
-.btnExport:hover {
+.btnExport:hover:not(:disabled) {
   background: #0b7dda;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.btnExport:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Summary Grid */

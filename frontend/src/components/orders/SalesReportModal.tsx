@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Download, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as orderService from '@/services/order.service';
+import { generateSalesReportPDF } from '@/utils/pdf-export';
 import styles from './SalesReportModal.module.css';
 
 interface SalesReportModalProps {
@@ -54,6 +55,7 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
   const [timeTo, setTimeTo] = useState('');
   const [reportData, setReportData] = useState<SalesReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Set default dates (today)
@@ -108,10 +110,15 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
     if (!reportData) return;
 
     try {
-      // TODO: Implement PDF export
-      toast.success('Fitur export PDF akan segera tersedia');
+      setIsExporting(true);
+      const fileName = `Laporan_Penjualan_${reportData.period.date_from}_${reportData.period.date_to}.pdf`;
+      await generateSalesReportPDF(reportData, fileName);
+      toast.success('Laporan berhasil diunduh');
     } catch (error: any) {
-      toast.error('Gagal mengexport laporan');
+      console.error('PDF export error:', error);
+      toast.error('Gagal mengunduh laporan');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -203,9 +210,18 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
                     {reportData.period.time_from && ` (${reportData.period.time_from} - ${reportData.period.time_to})`}
                   </p>
                 </div>
-                <button onClick={handleExportPDF} className={styles.btnExport}>
-                  <Download size={16} />
-                  Export PDF
+                <button onClick={handleExportPDF} disabled={isExporting} className={styles.btnExport}>
+                  {isExporting ? (
+                    <>
+                      <Loader size={16} className={styles.spinner} />
+                      Mengunduh...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      Export PDF
+                    </>
+                  )}
                 </button>
               </div>
 
