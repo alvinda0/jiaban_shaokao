@@ -56,8 +56,12 @@ export default function OrderPage() {
   
   // Confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null)
+  const [confirmAction, setConfirmAction] = useState<(() => void) | string | null>(null)
   const [confirmMessage, setConfirmMessage] = useState('')
+  
+  // Success modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   
   // Order info
   const [orderType, setOrderType] = useState<'dine_in' | 'take_away'>('dine_in')
@@ -634,7 +638,9 @@ export default function OrderPage() {
         
         console.log('💾 Order saved to localStorage:', orderInfo)
         
-        toast.success(t('orderSuccess'))
+        // Show success modal
+        setSuccessMessage(`Pesanan berhasil dipesan!\n\nPesanan Anda akan diproses oleh kasir.\nMohon tunggu...`)
+        setShowSuccessModal(true)
         
         // Clear form
         setCart([])
@@ -648,7 +654,8 @@ export default function OrderPage() {
           setCurrentOrderId(null)
           const storageKey = getOrderStorageKey()
           localStorage.removeItem(storageKey)
-        }, 1000)
+          setShowSuccessModal(false)
+        }, 3000)
       }
     } catch (error: any) {
       console.error('❌ Order error:', error)
@@ -1172,13 +1179,51 @@ export default function OrderPage() {
               </button>
               <button 
                 onClick={() => {
-                  confirmAction?.()
+                  if (confirmAction === 'qty_adjustment') {
+                    setShowConfirmModal(false)
+                    // Auto submit order setelah user set qty
+                    setTimeout(() => {
+                      executeSubmitOrder()
+                    }, 100)
+                  } else if (typeof confirmAction === 'function') {
+                    confirmAction()
+                  }
                   setConfirmAction(null)
                 }}
                 className={styles.btnCheckout}
               >
-                OK
+                {confirmAction === 'qty_adjustment' ? 'Lanjutkan Pesan' : 'OK'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className={styles.cartModal}>
+          <div className={styles.cartOverlay} onClick={() => setShowSuccessModal(false)} />
+          <div className={styles.confirmModal} style={{ textAlign: 'center' }}>
+            <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+              {/* Success Icon */}
+              <div style={{ fontSize: '64px' }}>
+                ✅
+              </div>
+
+              {/* Success Message */}
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#22C55E', margin: '0 0 12px 0' }}>
+                  Pesanan Berhasil!
+                </h2>
+                <p style={{ fontSize: '16px', color: '#666', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  {successMessage}
+                </p>
+              </div>
+
+              {/* Loading Indicator */}
+              <div style={{ fontSize: '32px' }}>
+                ⏳
+              </div>
             </div>
           </div>
         </div>
