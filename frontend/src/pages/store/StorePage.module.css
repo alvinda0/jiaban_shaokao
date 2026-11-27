@@ -97,7 +97,8 @@
 }
 
 .address,
-.phone {
+.phone,
+.timezone {
   font-size: 14px;
   color: #737373;
   margin: 6px 0;

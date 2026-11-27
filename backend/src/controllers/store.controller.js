@@ -38,8 +38,14 @@ const getById = async (req, res) => {
 // POST /api/stores
 const create = async (req, res) => {
   try {
-    const { name, address, phone, logo_url } = req.body;
-    const store = await StoreService.createStore({ name, address, phone, logo_url });
+    const { name, address, phone, logo_url, timezone } = req.body;
+    const store = await StoreService.createStore({ 
+      name, 
+      address, 
+      phone, 
+      logo_url,
+      timezone
+    });
     return success(res, store, 'Store created', 201);
   } catch (err) {
     console.error(err);
@@ -51,13 +57,14 @@ const create = async (req, res) => {
 // PUT /api/stores/:id
 const update = async (req, res) => {
   try {
-    const { name, address, phone, logo_url, is_active } = req.body;
+    const { name, address, phone, logo_url, is_active, timezone } = req.body;
     const store = await StoreService.updateStore(req.params.id, {
       name,
       address,
       phone,
       logo_url,
-      is_active
+      is_active,
+      timezone
     });
     return success(res, store, 'Store updated');
   } catch (err) {

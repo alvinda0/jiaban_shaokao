@@ -16,6 +16,7 @@ interface FormState {
   phone: string
   logo_url: string
   is_active: number
+  timezone?: string
 }
 
 const defaultForm: FormState = {
@@ -24,6 +25,7 @@ const defaultForm: FormState = {
   phone: '',
   logo_url: '',
   is_active: 1,
+  timezone: 'Asia/Jakarta',
 }
 
 export default function StorePage() {
@@ -80,6 +82,7 @@ export default function StorePage() {
       phone: store.phone || '',
       logo_url: store.logo_url || '',
       is_active: store.is_active,
+      timezone: (store as any).timezone || 'Asia/Jakarta',
     })
     setModal('edit')
   }
@@ -174,6 +177,9 @@ export default function StorePage() {
               <p className={styles.address}>📍 {store.address}</p>
             )}
             {store.phone && <p className={styles.phone}>📞 {store.phone}</p>}
+            {(store as any).timezone && (
+              <p className={styles.timezone}>🌍 {(store as any).timezone}</p>
+            )}
 
             <div className={styles.cardActions}>
               <button
@@ -241,6 +247,47 @@ export default function StorePage() {
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
               />
+
+              <label className={styles.label}>Timezone</label>
+              <select
+                className={styles.input}
+                value={form.timezone || 'Asia/Jakarta'}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, timezone: e.target.value }))
+                }
+              >
+                <optgroup label="Asia">
+                  <option value="Asia/Jakarta">Jakarta, Indonesia (UTC+7)</option>
+                  <option value="Asia/Bangkok">Bangkok, Thailand (UTC+7)</option>
+                  <option value="Asia/Ho_Chi_Minh">Ho Chi Minh, Vietnam (UTC+7)</option>
+                  <option value="Asia/Yerevan">Yerevan, Armenia (UTC+4)</option>
+                  <option value="Asia/Dubai">Dubai, UAE (UTC+4)</option>
+                  <option value="Asia/Kolkata">Kolkata, India (UTC+5:30)</option>
+                  <option value="Asia/Tokyo">Tokyo, Japan (UTC+9)</option>
+                  <option value="Asia/Hong_Kong">Hong Kong (UTC+8)</option>
+                  <option value="Asia/Singapore">Singapore (UTC+8)</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option value="Europe/London">London, UK (UTC+0)</option>
+                  <option value="Europe/Paris">Paris, France (UTC+1)</option>
+                  <option value="Europe/Berlin">Berlin, Germany (UTC+1)</option>
+                  <option value="Europe/Moscow">Moscow, Russia (UTC+3)</option>
+                  <option value="Europe/Istanbul">Istanbul, Turkey (UTC+3)</option>
+                </optgroup>
+                <optgroup label="Americas">
+                  <option value="America/New_York">New York, USA (UTC-5)</option>
+                  <option value="America/Chicago">Chicago, USA (UTC-6)</option>
+                  <option value="America/Denver">Denver, USA (UTC-7)</option>
+                  <option value="America/Los_Angeles">Los Angeles, USA (UTC-8)</option>
+                  <option value="America/Toronto">Toronto, Canada (UTC-5)</option>
+                  <option value="America/Sao_Paulo">São Paulo, Brazil (UTC-3)</option>
+                </optgroup>
+                <optgroup label="Australia">
+                  <option value="Australia/Sydney">Sydney (UTC+10)</option>
+                  <option value="Australia/Melbourne">Melbourne (UTC+10)</option>
+                  <option value="Australia/Perth">Perth (UTC+8)</option>
+                </optgroup>
+              </select>
 
               <label className={styles.label}>Logo Store</label>
               <div className={styles.logoUpload}>

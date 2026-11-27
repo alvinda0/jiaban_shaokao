@@ -22,13 +22,25 @@ class StoreService {
 
  
   static async createStore(storeData) {
-    const { name, address, phone, logo_url } = storeData;
+    const { name, address, phone, logo_url, timezone } = storeData;
 
     if (!name || name.trim() === '') {
       throw { status: 400, message: 'Store name is required' };
     }
 
-    const result = await StoreModel.create({ name, address, phone, logo_url });
+    // Validate timezone format (optional - defaults to Asia/Jakarta)
+    const tzRegex = /^[A-Za-z/_]+$/;
+    if (timezone && !tzRegex.test(timezone)) {
+      throw { status: 400, message: 'Invalid timezone format' };
+    }
+
+    const result = await StoreModel.create({ 
+      name, 
+      address, 
+      phone, 
+      logo_url,
+      timezone: timezone || 'Asia/Jakarta'
+    });
     return await StoreModel.findById(result.insertId);
   }
 
@@ -41,6 +53,14 @@ class StoreService {
 
     if (updateData.name !== undefined && updateData.name.trim() === '') {
       throw { status: 400, message: 'Store name cannot be empty' };
+    }
+
+    // Validate timezone if provided
+    if (updateData.timezone) {
+      const tzRegex = /^[A-Za-z/_]+$/;
+      if (!tzRegex.test(updateData.timezone)) {
+        throw { status: 400, message: 'Invalid timezone format' };
+      }
     }
 
     await StoreModel.update(id, updateData);
