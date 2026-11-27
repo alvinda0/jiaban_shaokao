@@ -28,6 +28,8 @@ const resources = {
       
       // Variant Modal
       basePrice: 'Harga Dasar',
+      quantity: 'Jumlah',
+      selectQuantity: 'Pilih Jumlah',
       notesOptional: 'Catatan (Opsional)',
       notesPlaceholder: 'Contoh: Tidak pedas, tanpa bawang...',
       total: 'Total',
@@ -54,8 +56,10 @@ const resources = {
       orderItems: 'Daftar Pesanan',
       createOrder: 'Buat Pesanan',
       addItems: 'Tambah Item',
+      continueOrder: 'Lanjutkan Pesan',
       items: 'item',
-      orderSuccess: 'Pesanan berhasil dibuat!',
+      orderSuccess: 'Pesanan Berhasil!',
+      orderSuccessMsg: 'Pesanan berhasil dipesan!\n\nPesanan Anda akan diproses oleh kasir.\nMohon tunggu...',
       orderFailed: 'Gagal membuat pesanan',
       tableNotFound: 'Table ID tidak ditemukan',
       
@@ -98,6 +102,8 @@ const resources = {
       
       // Variant Modal
       basePrice: 'Base Price',
+      quantity: 'Quantity',
+      selectQuantity: 'Select Quantity',
       notesOptional: 'Notes (Optional)',
       notesPlaceholder: 'Example: No spicy, no onion...',
       total: 'Total',
@@ -124,8 +130,10 @@ const resources = {
       orderItems: 'Order Items',
       createOrder: 'Create Order',
       addItems: 'Add Items',
+      continueOrder: 'Continue Order',
       items: 'items',
-      orderSuccess: 'Order created successfully!',
+      orderSuccess: 'Order Successfully!',
+      orderSuccessMsg: 'Order placed successfully!\n\nYour order will be processed by the cashier.\nPlease wait...',
       orderFailed: 'Failed to create order',
       tableNotFound: 'Table ID not found',
       
@@ -168,6 +176,8 @@ const resources = {
       
       // Variant Modal
       basePrice: '基本價格',
+      quantity: '數量',
+      selectQuantity: '選擇數量',
       notesOptional: '備註（選填）',
       notesPlaceholder: '例如：不要辣、不要洋蔥...',
       total: '總計',
@@ -194,8 +204,10 @@ const resources = {
       orderItems: '訂單項目',
       createOrder: '創建訂單',
       addItems: '添加項目',
+      continueOrder: '繼續訂購',
       items: '項',
-      orderSuccess: '訂單創建成功！',
+      orderSuccess: '訂單提交成功！',
+      orderSuccessMsg: '訂單提交成功！\n\n您的訂單將由收銀員處理。\n請稍候...',
       orderFailed: '創建訂單失敗',
       tableNotFound: '找不到桌號',
       

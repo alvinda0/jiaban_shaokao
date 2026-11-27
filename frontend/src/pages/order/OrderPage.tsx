@@ -51,12 +51,13 @@ export default function OrderPage() {
   const [showCart, setShowCart] = useState(false)
   const [showVariantModal, setShowVariantModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedProductQty, setSelectedProductQty] = useState(1)
   const [selectedVariants, setSelectedVariants] = useState<Record<string, VariantSelection>>({})
   const [itemNotes, setItemNotes] = useState('')
   
   // Confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [confirmAction, setConfirmAction] = useState<(() => void) | string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<(() => void) | 'qty_adjustment' | 'qty_picker' | null>(null)
   const [confirmMessage, setConfirmMessage] = useState('')
   
   // Success modal
@@ -299,26 +300,17 @@ export default function OrderPage() {
       setSelectedProduct(product)
       setSelectedVariants({})
       setItemNotes('')
+      setSelectedProductQty(1)
       setShowVariantModal(true)
       return
     }
 
-    // No variants, add directly
-    const existingItem = cart.find(item => item.product.id === product.id && !item.variants)
-    
-    if (existingItem) {
-      // Increase quantity
-      setCart(cart.map(item => 
-        item.product.id === product.id && !item.variants
-          ? { ...item, qty: item.qty + 1 }
-          : item
-      ))
-      toast.success(`${product.name} ${t('addedToCart')}`)
-    } else {
-      // Add new item
-      setCart([...cart, { product, qty: 1 }])
-      toast.success(`${product.name} ${t('addedToCart')}`)
-    }
+    // No variants - show qty picker modal
+    setSelectedProduct(product)
+    setSelectedProductQty(1)
+    setConfirmMessage('')
+    setConfirmAction('qty_picker')
+    setShowConfirmModal(true)
   }
 
   // Add to cart with variants
@@ -339,13 +331,13 @@ export default function OrderPage() {
     if (existingItem) {
       setCart(cart.map(item => 
         item === existingItem
-          ? { ...item, qty: item.qty + 1 }
+          ? { ...item, qty: item.qty + selectedProductQty }
           : item
       ))
     } else {
       setCart([...cart, {
         product: selectedProduct,
-        qty: 1,
+        qty: selectedProductQty,
         variants: variantsArray,
         notes: itemNotes
       }])
@@ -356,6 +348,7 @@ export default function OrderPage() {
     setSelectedProduct(null)
     setSelectedVariants({})
     setItemNotes('')
+    setSelectedProductQty(1)
   }
 
   // Select variant option
@@ -639,7 +632,7 @@ export default function OrderPage() {
         console.log('💾 Order saved to localStorage:', orderInfo)
         
         // Show success modal
-        setSuccessMessage(`Pesanan berhasil dipesan!\n\nPesanan Anda akan diproses oleh kasir.\nMohon tunggu...`)
+        setSuccessMessage(t('orderSuccessMsg'))
         setShowSuccessModal(true)
         
         // Clear form
@@ -826,11 +819,17 @@ export default function OrderPage() {
       {/* Variant Modal */}
       {showVariantModal && selectedProduct && (
         <div className={styles.cartModal}>
-          <div className={styles.cartOverlay} onClick={() => setShowVariantModal(false)} />
+          <div className={styles.cartOverlay} onClick={() => {
+            setShowVariantModal(false)
+            setSelectedProductQty(1)
+          }} />
           <div className={styles.cartContent}>
             <div className={styles.cartHeader}>
               <h2>{selectedProduct.name}</h2>
-              <button onClick={() => setShowVariantModal(false)} className={styles.btnClose}>
+              <button onClick={() => {
+                setShowVariantModal(false)
+                setSelectedProductQty(1)
+              }} className={styles.btnClose}>
                 ✕
               </button>
             </div>
@@ -876,6 +875,26 @@ export default function OrderPage() {
                   </div>
                 </div>
               ))}
+
+              {/* Quantity Picker */}
+              <div className={styles.variantGroup}>
+                <h3 className={styles.variantGroupTitle}>{t('quantity')}</h3>
+                <div className={styles.qtyPickerContainer}>
+                  <button
+                    onClick={() => setSelectedProductQty(Math.max(1, selectedProductQty - 1))}
+                    className={styles.qtyBtn}
+                  >
+                    −
+                  </button>
+                  <span className={styles.qtyDisplay}>{selectedProductQty}</span>
+                  <button
+                    onClick={() => setSelectedProductQty(selectedProductQty + 1)}
+                    className={styles.qtyBtn}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
               {/* Notes */}
               <div className={styles.variantGroup}>
@@ -1165,9 +1184,74 @@ export default function OrderPage() {
             </div>
 
             <div className={styles.cartBody} style={{ textAlign: 'center', padding: '24px' }}>
-              <p style={{ fontSize: '16px', marginBottom: '24px', color: '#000' }}>
-                {confirmMessage}
-              </p>
+              {confirmAction === 'qty_picker' && selectedProduct ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '16px', marginBottom: '16px', color: '#333' }}>
+                      {t('selectQuantity') || 'Pilih Jumlah'}
+                    </h3>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', alignItems: 'center' }}>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        padding: '12px',
+                        background: '#f5f5f5',
+                        borderRadius: '8px',
+                        minWidth: '100px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                          {selectedProduct.name}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                          <button
+                            onClick={() => {
+                              if (selectedProductQty > 1) {
+                                setSelectedProductQty(selectedProductQty - 1)
+                              }
+                            }}
+                            style={{
+                              padding: '6px 10px',
+                              background: '#fff',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              fontSize: '16px',
+                              fontWeight: '700',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            −
+                          </button>
+                          <span style={{ fontSize: '18px', fontWeight: '700', color: '#333', minWidth: '30px' }}>
+                            {selectedProductQty}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSelectedProductQty(selectedProductQty + 1)
+                            }}
+                            style={{
+                              padding: '6px 10px',
+                              background: '#fff',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              fontSize: '16px',
+                              fontWeight: '700',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: '16px', marginBottom: '24px', color: '#000' }}>
+                  {confirmMessage}
+                </p>
+              )}
             </div>
 
             <div className={styles.modalActions}>
@@ -1175,11 +1259,30 @@ export default function OrderPage() {
                 onClick={() => setShowConfirmModal(false)}
                 className={styles.btnSecondary}
               >
-                Batal
+                {t('cancel')}
               </button>
               <button 
                 onClick={() => {
-                  if (confirmAction === 'qty_adjustment') {
+                  if (confirmAction === 'qty_picker' && selectedProduct) {
+                    // Add to cart dengan qty yang dipilih
+                    const qty = selectedProductQty
+                    const existingItem = cart.find(item => item.product.id === selectedProduct.id && !item.variants)
+                    
+                    if (existingItem) {
+                      setCart(cart.map(item => 
+                        item.product.id === selectedProduct.id && !item.variants
+                          ? { ...item, qty: item.qty + qty }
+                          : item
+                      ))
+                    } else {
+                      setCart([...cart, { product: selectedProduct, qty: qty }])
+                    }
+                    
+                    toast.success(`${selectedProduct.name} ${t('addedToCart')}`)
+                    setShowConfirmModal(false)
+                    setSelectedProduct(null)
+                    setSelectedProductQty(1)
+                  } else if (confirmAction === 'qty_adjustment') {
                     setShowConfirmModal(false)
                     // Auto submit order setelah user set qty
                     setTimeout(() => {
@@ -1192,7 +1295,7 @@ export default function OrderPage() {
                 }}
                 className={styles.btnCheckout}
               >
-                {confirmAction === 'qty_adjustment' ? 'Lanjutkan Pesan' : 'OK'}
+                {confirmAction === 'qty_picker' ? t('addToCart') : confirmAction === 'qty_adjustment' ? t('continueOrder') : t('confirm')}
               </button>
             </div>
           </div>
@@ -1213,7 +1316,7 @@ export default function OrderPage() {
               {/* Success Message */}
               <div>
                 <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#22C55E', margin: '0 0 12px 0' }}>
-                  Pesanan Berhasil!
+                  {t('orderSuccess')}
                 </h2>
                 <p style={{ fontSize: '16px', color: '#666', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
                   {successMessage}

@@ -1297,3 +1297,45 @@
 .btnRemoveVoucher:hover {
   opacity: 1;
 }
+
+/* Qty Picker Container */
+.qtyPickerContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.qtyBtn {
+  width: 44px;
+  height: 44px;
+  border: 2px solid #E5E7EB;
+  background: white;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qtyBtn:hover {
+  border-color: #EF4444;
+  background: #FEF2F2;
+}
+
+.qtyBtn:active {
+  transform: scale(0.95);
+}
+
+.qtyDisplay {
+  font-size: 24px;
+  font-weight: 700;
+  color: #000000;
+  min-width: 40px;
+  text-align: center;
+}
+
