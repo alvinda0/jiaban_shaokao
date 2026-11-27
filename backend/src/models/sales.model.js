@@ -15,20 +15,23 @@ function normalizeTimeRange(time_from, time_to) {
 }
 
 class SalesModel {
-  /**
-   * Get comprehensive sales report
-   * Includes: products sold, discounts, taxes, service charges, payment methods
-   * Uses store timezone for accurate date filtering
-   */
+
   static async getSalesReport(store_id, filters = {}) {
     let { date_from, date_to, time_from, time_to } = filters;
 
+    console.log('🔍 getSalesReport START');
+    console.log('   Input params:', { store_id, date_from, date_to, time_from, time_to });
+
     // Normalize time_from and time_to
     ({ time_from, time_to } = normalizeTimeRange(time_from, time_to));
+    console.log('   After time normalization:', { time_from, time_to });
 
     // Fetch store timezone for accurate date filtering
     const storeQuery = `SELECT timezone FROM stores WHERE id = $1`;
+    console.log('   Executing store query:', storeQuery);
     const storeResult = await pool.query(storeQuery, [store_id]);
+    console.log('   Store query result:', storeResult.rows);
+    
     const timezone = storeResult.rows[0]?.timezone || 'Asia/Jakarta';
     console.log('🌍 Store Timezone:', timezone);
 
@@ -85,6 +88,7 @@ class SalesModel {
     console.log('   with params:', params);
 
     const productsResult = await pool.query(productsQuery, params);
+    console.log('   📦 Products result count:', productsResult.rows.length);
 
     // Get discount breakdown by type
     const discountsQuery = `
@@ -104,6 +108,7 @@ class SalesModel {
     `;
 
     const discountsResult = await pool.query(discountsQuery, params);
+    console.log('   💳 Discounts result count:', discountsResult.rows.length);
 
     // Get payment method breakdown
     const paymentsQuery = `
@@ -123,6 +128,7 @@ class SalesModel {
     `;
 
     const paymentsResult = await pool.query(paymentsQuery, params);
+    console.log('   💰 Payments result count:', paymentsResult.rows.length);
 
     // Get overall summary - INCLUDE ALL ORDERS (use 2 separate queries to avoid JOIN duplication)
     const ordersQuery = `
@@ -146,6 +152,9 @@ class SalesModel {
 
     console.log('📋 Orders Query:', ordersQuery);
     console.log('   with params:', params);
+    
+    const ordersResult = await pool.query(ordersQuery, params);
+    console.log('   Orders result:', ordersResult.rows);
 
     // Get subtotal from order_items
     const subtotalQuery = `
