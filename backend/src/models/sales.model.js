@@ -43,6 +43,31 @@ class SalesModel {
     const timezone = storeResult.rows[0]?.timezone || 'Asia/Jakarta';
     console.log('🌍 Store Timezone:', timezone);
 
+    // Adjust dates/times by subtracting 7 hours for UTC+7 timezone
+    // This converts local dates back to UTC for database query
+    const adjustDateTime = (dateStr, timeStr) => {
+      const dateTime = new Date(`${dateStr}T${timeStr}:00`);
+      dateTime.setHours(dateTime.getHours() - 7);
+      const adjustedDate = dateTime.toISOString().split('T')[0];
+      const adjustedTime = dateTime.toISOString().split('T')[1].substring(0, 5);
+      return { date: adjustedDate, time: adjustedTime };
+    };
+
+    const adjustedFrom = adjustDateTime(date_from, time_from);
+    const adjustedTo = adjustDateTime(date_to, time_to);
+
+    console.log('⏰ Timezone adjusted:');
+    console.log('   Original:', { date_from, time_from });
+    console.log('   Adjusted:', adjustedFrom);
+    console.log('   Original:', { date_to, time_to });
+    console.log('   Adjusted:', adjustedTo);
+
+    // Use adjusted dates/times for database query
+    date_from = adjustedFrom.date;
+    time_from = adjustedFrom.time;
+    date_to = adjustedTo.date;
+    time_to = adjustedTo.time;
+
     // Build date-time filter using store timezone
     // NOTE: opened_at is stored as timestamp WITHOUT timezone (naive/local time)
     // So we don't need AT TIME ZONE conversion - use dates directly
@@ -67,10 +92,10 @@ class SalesModel {
 
     console.log('📊 Sales Report Query:');
     console.log('   Store ID:', store_id);
-    console.log('   Date From:', date_from);
-    console.log('   Date To:', date_to);
-    console.log('   Time From:', time_from);
-    console.log('   Time To:', time_to);
+    console.log('   Date From (adjusted):', date_from);
+    console.log('   Date To (adjusted):', date_to);
+    console.log('   Time From (adjusted):', time_from);
+    console.log('   Time To (adjusted):', time_to);
     console.log('   Full params:', params);
 
     // Get products sold
