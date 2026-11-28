@@ -77,15 +77,35 @@ class SalesModel {
 
     // If time filter is provided, combine with date
     if (time_from && time_to) {
-      dateFilter = `
-        (
-          DATE(o.opened_at) >= $2::date AND 
-          DATE(o.opened_at) <= $3::date
-        )
-        AND
-        (CAST(o.opened_at AS TIME) >= $${paramIndex}::time AND
-         CAST(o.opened_at AS TIME) <= $${paramIndex + 1}::time)
-      `;
+      // Check if times wrap around midnight (time_from > time_to)
+      if (time_from > time_to) {
+        // Times wrap around midnight
+        // E.g., 17:00 to 16:59 means: from 17:00 today to 16:59 tomorrow
+        console.log('⏰ Time filter wraps around midnight');
+        dateFilter = `
+          (
+            DATE(o.opened_at) >= $2::date AND 
+            DATE(o.opened_at) <= $3::date
+          )
+          AND
+          (
+            (DATE(o.opened_at) = $2::date AND CAST(o.opened_at AS TIME) >= $${paramIndex}::time)
+            OR
+            (DATE(o.opened_at) = $3::date AND CAST(o.opened_at AS TIME) <= $${paramIndex + 1}::time)
+          )
+        `;
+      } else {
+        // Normal case: times don't wrap
+        dateFilter = `
+          (
+            DATE(o.opened_at) >= $2::date AND 
+            DATE(o.opened_at) <= $3::date
+          )
+          AND
+          (CAST(o.opened_at AS TIME) >= $${paramIndex}::time AND
+           CAST(o.opened_at AS TIME) <= $${paramIndex + 1}::time)
+        `;
+      }
       params.push(time_from, time_to);
       paramIndex += 2;
     }
