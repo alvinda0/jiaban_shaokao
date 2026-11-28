@@ -1,5 +1,7 @@
 const { pool } = require('../config/db');
 
+console.log('✅ SalesModel loaded - Timezone bug fix v2.0 (2026-11-28)');
+
 /**
  * Normalize time range - if time_from > time_to, swap them
  * @param {string} time_from - Start time in HH:MM:SS or HH:MM format

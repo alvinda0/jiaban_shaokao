@@ -1,5 +1,7 @@
 const { pool } = require('../config/db');
 
+console.log('✅ ReportModel loaded - Timezone bug fix v2.0 (2026-11-28)');
+
 class ReportModel {
   static async getProfitLossReport(store_id, filters = {}) {
     const { date_from, date_to } = filters;
