@@ -77,25 +77,23 @@ class SalesModel {
 
     // If time filter is provided, combine with date
     if (time_from && time_to) {
-      // Check if times wrap around midnight (time_from > time_to)
-      if (time_from > time_to) {
-        // Times wrap around midnight
-        // E.g., 17:00 to 16:59 means: from 17:00 today to 16:59 tomorrow
-        console.log('⏰ Time filter wraps around midnight');
+      // Check if dates are DIFFERENT (spanning multiple days)
+      if (date_from !== date_to) {
+        // Multi-day query: 
+        // - From: date_from at time_from onwards
+        // - To: date_to at time_to and earlier
+        console.log('📅 Multi-day query detected');
         dateFilter = `
-          (
-            DATE(o.opened_at) >= $2::date AND 
-            DATE(o.opened_at) <= $3::date
-          )
-          AND
           (
             (DATE(o.opened_at) = $2::date AND CAST(o.opened_at AS TIME) >= $${paramIndex}::time)
             OR
             (DATE(o.opened_at) = $3::date AND CAST(o.opened_at AS TIME) <= $${paramIndex + 1}::time)
+            OR
+            (DATE(o.opened_at) > $2::date AND DATE(o.opened_at) < $3::date)
           )
         `;
       } else {
-        // Normal case: times don't wrap
+        // Single day: normal time range
         dateFilter = `
           (
             DATE(o.opened_at) >= $2::date AND 
