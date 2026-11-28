@@ -244,8 +244,8 @@ class SalesModel {
       period: {
         date_from,
         date_to,
-        time_from: time_from || '00:00:00',
-        time_to: time_to || '23:59:59',
+        time_from: time_from || '00:00',
+        time_to: time_to || '23:59',
       },
       summary: mergedSummary || {
         total_orders: 0,
