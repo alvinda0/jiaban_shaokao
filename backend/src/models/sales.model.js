@@ -24,6 +24,12 @@ class SalesModel {
     console.log('🔍 getSalesReport START');
     console.log('   Input params:', { store_id, date_from, date_to, time_from, time_to });
 
+    // Store original input from frontend
+    const original_date_from = date_from;
+    const original_date_to = date_to;
+    const original_time_from = time_from;
+    const original_time_to = time_to;
+
     // Normalize time_from and time_to
     ({ time_from, time_to } = normalizeTimeRange(time_from, time_to));
     console.log('   After time normalization:', { time_from, time_to });
@@ -242,13 +248,14 @@ class SalesModel {
 
     return {
       period: {
-        date_from,
-        date_to,
-        time_from: time_from || '00:00',
-        time_to: time_to || '23:59',
+        // Show ORIGINAL INPUT from frontend (what user selected)
+        date_from: original_date_from,
+        date_to: original_date_to,
+        time_from: original_time_from || '00:00',
+        time_to: original_time_to || '23:59',
       },
       server_period: {
-        // Show the actual dates/times used by server for querying
+        // Show the ADJUSTED dates/times used by server for querying
         date_from,
         date_to,
         time_from: time_from || '00:00',
