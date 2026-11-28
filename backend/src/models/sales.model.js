@@ -152,9 +152,6 @@ class SalesModel {
 
     console.log('📋 Orders Query:', ordersQuery);
     console.log('   with params:', params);
-    
-    const ordersResult = await pool.query(ordersQuery, params);
-    console.log('   Orders result:', ordersResult.rows);
 
     // Get subtotal from order_items
     const subtotalQuery = `
@@ -186,6 +183,8 @@ class SalesModel {
       pool.query(subtotalQuery, params),
       pool.query(discountQuery, params)
     ]);
+
+    console.log('   Orders result:', ordersResult.rows);
 
     const ordersSummary = ordersResult.rows[0] || {};
     const subtotalData = subtotalResult.rows[0] || {};
