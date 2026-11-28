@@ -61,9 +61,15 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
   // Set default dates (today)
   useEffect(() => {
     if (isOpen) {
-      const today = new Date().toISOString().split('T')[0];
-      setDateFrom(today);
-      setDateTo(today);
+      // Use local date without UTC conversion
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
+      setDateFrom(dateString);
+      setDateTo(dateString);
       setTimeFrom('');
       setTimeTo('');
       setReportData(null);
