@@ -185,10 +185,15 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
               <div className={styles.filterGroup}>
                 <label>Waktu Mulai (24-jam) *</label>
                 <input
-                  type="time"
+                  type="text"
                   value={timeFrom}
-                  onChange={(e) => setTimeFrom(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9:]/g, '');
+                    if (val.length <= 5) setTimeFrom(val);
+                  }}
+                  placeholder="00:00"
                   className={styles.input}
+                  pattern="\d{2}:\d{2}"
                   required
                 />
               </div>
@@ -196,10 +201,15 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
               <div className={styles.filterGroup}>
                 <label>Waktu Akhir (24-jam) *</label>
                 <input
-                  type="time"
+                  type="text"
                   value={timeTo}
-                  onChange={(e) => setTimeTo(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9:]/g, '');
+                    if (val.length <= 5) setTimeTo(val);
+                  }}
+                  placeholder="23:59"
                   className={styles.input}
+                  pattern="\d{2}:\d{2}"
                   required
                 />
               </div>

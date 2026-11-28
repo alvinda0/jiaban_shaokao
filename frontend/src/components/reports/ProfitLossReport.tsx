@@ -287,10 +287,15 @@ export default function ProfitLossReport({ storeId }: Props) {
           <div>
             <label>Jam Dari (24-jam) *:</label>
             <input
-              type="time"
+              type="text"
               value={timeFrom}
-              onChange={e => setTimeFrom(e.target.value)}
+              onChange={e => {
+                const val = e.target.value.replace(/[^0-9:]/g, '');
+                if (val.length <= 5) setTimeFrom(val);
+              }}
+              placeholder="00:00"
               className={styles.input}
+              pattern="\d{2}:\d{2}"
               required
             />
           </div>
@@ -298,10 +303,15 @@ export default function ProfitLossReport({ storeId }: Props) {
           <div>
             <label>Jam Sampai (24-jam) *:</label>
             <input
-              type="time"
+              type="text"
               value={timeTo}
-              onChange={e => setTimeTo(e.target.value)}
+              onChange={e => {
+                const val = e.target.value.replace(/[^0-9:]/g, '');
+                if (val.length <= 5) setTimeTo(val);
+              }}
+              placeholder="23:59"
               className={styles.input}
+              pattern="\d{2}:\d{2}"
               required
             />
           </div>
