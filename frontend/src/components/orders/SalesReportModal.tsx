@@ -98,24 +98,16 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
       setIsLoading(true);
       setHasSubmitted(true);
 
-      // Adjust dates: subtract 7 hours for UTC+7 timezone
-      const fromDate = new Date(`${dateFrom}T${timeFrom}`);
-      fromDate.setHours(fromDate.getHours() - 7);
-      const adjustedDateFrom = fromDate.toISOString().split('T')[0];
-
-      const toDate = new Date(`${dateTo}T${timeTo}`);
-      toDate.setHours(toDate.getHours() - 7);
-      const adjustedDateTo = toDate.toISOString().split('T')[0];
-
+      // Send dates/times as-is (no adjustment on frontend)
+      // Backend will handle timezone adjustment
       const params: any = {
-        date_from: adjustedDateFrom,
-        date_to: adjustedDateTo,
+        date_from: dateFrom,
+        date_to: dateTo,
+        time_from: timeFrom,
+        time_to: timeTo,
       };
 
-      if (timeFrom) params.time_from = timeFrom;
-      if (timeTo) params.time_to = timeTo;
-
-      console.log('📤 Sending to backend:', { dateFrom, dateTo, timeFrom, timeTo, adjustedDateFrom, adjustedDateTo });
+      console.log('📤 Sending to backend:', params);
 
       const response = await orderService.getSalesReport(storeId, params);
       setReportData(response.data);

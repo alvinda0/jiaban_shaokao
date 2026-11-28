@@ -164,19 +164,10 @@ export default function ProfitLossReport({ storeId }: Props) {
         return
       }
 
-      // Adjust dates: subtract 7 hours for UTC+7 timezone
-      const fromDate = new Date(`${dateFrom}T00:00:00`);
-      fromDate.setHours(fromDate.getHours() - 7);
-      const adjustedDateFrom = fromDate.toISOString().split('T')[0];
+      console.log('📊 ProfitLossReport - Sending dates/times as-is:', { dateFrom, dateTo, timeFrom, timeTo });
 
-      const toDate = new Date(`${dateTo}T23:59:59`);
-      toDate.setHours(toDate.getHours() - 7);
-      const adjustedDateTo = toDate.toISOString().split('T')[0];
-
-      console.log('📊 ProfitLossReport - Date adjustment:', { dateFrom, dateTo, adjustedDateFrom, adjustedDateTo });
-
-      // Fetch profit-loss report
-      const plUrl = `${API_BASE_URL}/stores/${storeId}/reports/profit-loss?date_from=${adjustedDateFrom}&date_to=${adjustedDateTo}`
+      // Fetch profit-loss report (send dates/times directly, no adjustment)
+      const plUrl = `${API_BASE_URL}/stores/${storeId}/reports/profit-loss?date_from=${dateFrom}&date_to=${dateTo}`
       const plRes = await fetch(plUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -190,8 +181,8 @@ export default function ProfitLossReport({ storeId }: Props) {
 
       // Fetch daily revenue
       const timeParams = new URLSearchParams()
-      timeParams.append('date_from', adjustedDateFrom)
-      timeParams.append('date_to', adjustedDateTo)
+      timeParams.append('date_from', dateFrom)
+      timeParams.append('date_to', dateTo)
       if (timeFrom) timeParams.append('time_from', timeFrom)
       if (timeTo) timeParams.append('time_to', timeTo)
 
