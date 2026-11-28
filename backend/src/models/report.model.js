@@ -3,7 +3,9 @@ const { pool } = require('../config/db');
 class ReportModel {
   static async getProfitLossReport(store_id, filters = {}) {
     const { date_from, date_to } = filters;
-    const dateFilter = `((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)`;
+    // NOTE: opened_at/closed_at stored as timestamp WITHOUT timezone (naive/local time)
+    // Don't use AT TIME ZONE - dates are already in local time
+    const dateFilter = `DATE(COALESCE(o.closed_at, o.opened_at)) BETWEEN $2 AND $3`;
     const params = [store_id, date_from, date_to];
 
     try {
@@ -13,7 +15,7 @@ class ReportModel {
         SELECT SUM(oi.line_total) as subtotal
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
-        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)
+        WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
       `;
       
       const subtotalResult = await pool.query(subtotalQuery, params);
@@ -210,24 +212,26 @@ class ReportModel {
 
   static async getDailyRevenue(store_id, filters = {}) {
     const { date_from, date_to, time_from, time_to } = filters;
-    let dateFilter = `((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)`;
+    // NOTE: opened_at/closed_at stored as timestamp WITHOUT timezone (naive/local time)
+    // Don't use AT TIME ZONE - dates are already in local time
+    let dateFilter = `DATE(COALESCE(o.closed_at, o.opened_at)) BETWEEN $2 AND $3`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
     if (time_from) {
-      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time >= $${paramIndex}::time`;
+      dateFilter += ` AND CAST(COALESCE(o.closed_at, o.opened_at) AS TIME) >= $${paramIndex}::time`;
       params.push(time_from);
       paramIndex++;
     }
     if (time_to) {
-      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time <= $${paramIndex}::time`;
+      dateFilter += ` AND CAST(COALESCE(o.closed_at, o.opened_at) AS TIME) <= $${paramIndex}::time`;
       params.push(time_to);
       paramIndex++;
     }
 
     const query = `
       SELECT 
-        DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') as date,
+        DATE(COALESCE(o.closed_at, o.opened_at)) as date,
         COUNT(DISTINCT o.id) as order_count,
         (SUM(o.grand_total) - SUM(o.complimentary_amount)) as total_revenue,
         SUM(o.discount_total) as discount_total,
@@ -236,18 +240,18 @@ class ReportModel {
         SUM(o.complimentary_amount) as complimentary_total
       FROM orders o
       WHERE o.store_id = $1 AND o.status = 'paid' AND ${dateFilter}
-      GROUP BY DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')
+      GROUP BY DATE(COALESCE(o.closed_at, o.opened_at))
     `;
 
     // Separate query for subtotal
     const subtotalQuery = `
       SELECT 
-        DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta') as date,
+        DATE(COALESCE(o.closed_at, o.opened_at)) as date,
         SUM(oi.line_total) as subtotal
       FROM order_items oi
       INNER JOIN orders o ON oi.order_id = o.id
       WHERE o.store_id = $1 AND o.status = 'paid' AND oi.status != 'void' AND ${dateFilter}
-      GROUP BY DATE(COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')
+      GROUP BY DATE(COALESCE(o.closed_at, o.opened_at))
     `;
 
     try {
@@ -280,17 +284,19 @@ class ReportModel {
 
   static async getTopProducts(store_id, filters = {}) {
     const { date_from, date_to, time_from, time_to, limit = 10 } = filters;
-    let dateFilter = `((COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2 AND $3)`;
+    // NOTE: opened_at/closed_at stored as timestamp WITHOUT timezone (naive/local time)
+    // Don't use AT TIME ZONE - dates are already in local time
+    let dateFilter = `DATE(COALESCE(o.closed_at, o.opened_at)) BETWEEN $2 AND $3`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
     if (time_from) {
-      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time >= $${paramIndex}::time`;
+      dateFilter += ` AND CAST(COALESCE(o.closed_at, o.opened_at) AS TIME) >= $${paramIndex}::time`;
       params.push(time_from);
       paramIndex++;
     }
     if (time_to) {
-      dateFilter += ` AND (COALESCE(o.closed_at, o.opened_at) AT TIME ZONE 'Asia/Jakarta')::time <= $${paramIndex}::time`;
+      dateFilter += ` AND CAST(COALESCE(o.closed_at, o.opened_at) AS TIME) <= $${paramIndex}::time`;
       params.push(time_to);
       paramIndex++;
     }

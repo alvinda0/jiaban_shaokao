@@ -36,8 +36,9 @@ class SalesModel {
     console.log('🌍 Store Timezone:', timezone);
 
     // Build date-time filter using store timezone
-    // Use opened_at for filtering (more reliable than closed_at which may be null)
-    let dateFilter = `DATE(o.opened_at AT TIME ZONE '${timezone}') >= $2::date AND DATE(o.opened_at AT TIME ZONE '${timezone}') <= $3::date`;
+    // NOTE: opened_at is stored as timestamp WITHOUT timezone (naive/local time)
+    // So we don't need AT TIME ZONE conversion - use dates directly
+    let dateFilter = `DATE(o.opened_at) >= $2::date AND DATE(o.opened_at) <= $3::date`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
@@ -45,12 +46,12 @@ class SalesModel {
     if (time_from && time_to) {
       dateFilter = `
         (
-          DATE(o.opened_at AT TIME ZONE '${timezone}') >= $2::date AND 
-          DATE(o.opened_at AT TIME ZONE '${timezone}') <= $3::date
+          DATE(o.opened_at) >= $2::date AND 
+          DATE(o.opened_at) <= $3::date
         )
         AND
-        (CAST(o.opened_at AT TIME ZONE '${timezone}' AS TIME) >= $${paramIndex}::time AND
-         CAST(o.opened_at AT TIME ZONE '${timezone}' AS TIME) <= $${paramIndex + 1}::time)
+        (CAST(o.opened_at AS TIME) >= $${paramIndex}::time AND
+         CAST(o.opened_at AS TIME) <= $${paramIndex + 1}::time)
       `;
       params.push(time_from, time_to);
       paramIndex += 2;
@@ -276,18 +277,20 @@ class SalesModel {
     const storeResult = await pool.query(storeQuery, [store_id]);
     const timezone = storeResult.rows[0]?.timezone || 'Asia/Jakarta';
 
-    let dateFilter = `DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date`;
+    // NOTE: closed_at stored as timestamp WITHOUT timezone (naive/local time)
+    // Don't use AT TIME ZONE - dates are already in local time
+    let dateFilter = `DATE(o.closed_at) >= $2::date AND DATE(o.closed_at) <= $3::date`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
     if (time_from && time_to) {
       dateFilter = `
         (
-          (DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND 
-           DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date)
+          (DATE(o.closed_at) >= $2::date AND 
+           DATE(o.closed_at) <= $3::date)
           AND
-          (CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) >= $${paramIndex}::time AND
-           CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) <= $${paramIndex + 1}::time)
+          (CAST(o.closed_at AS TIME) >= $${paramIndex}::time AND
+           CAST(o.closed_at AS TIME) <= $${paramIndex + 1}::time)
         )
       `;
       params.push(time_from, time_to);
@@ -333,18 +336,20 @@ class SalesModel {
     const storeResult = await pool.query(storeQuery, [store_id]);
     const timezone = storeResult.rows[0]?.timezone || 'Asia/Jakarta';
 
-    let dateFilter = `DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date`;
+    // NOTE: closed_at stored as timestamp WITHOUT timezone (naive/local time)
+    // Don't use AT TIME ZONE - dates are already in local time
+    let dateFilter = `DATE(o.closed_at) >= $2::date AND DATE(o.closed_at) <= $3::date`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
     if (time_from && time_to) {
       dateFilter = `
         (
-          (DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND 
-           DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date)
+          (DATE(o.closed_at) >= $2::date AND 
+           DATE(o.closed_at) <= $3::date)
           AND
-          (CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) >= $${paramIndex}::time AND
-           CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) <= $${paramIndex + 1}::time)
+          (CAST(o.closed_at AS TIME) >= $${paramIndex}::time AND
+           CAST(o.closed_at AS TIME) <= $${paramIndex + 1}::time)
         )
       `;
       params.push(time_from, time_to);
@@ -395,18 +400,18 @@ class SalesModel {
     const storeResult = await pool.query(storeQuery, [store_id]);
     const timezone = storeResult.rows[0]?.timezone || 'Asia/Jakarta';
 
-    let dateFilter = `DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date`;
+    let dateFilter = `DATE(o.closed_at) >= $2::date AND DATE(o.closed_at) <= $3::date`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
     if (time_from && time_to) {
       dateFilter = `
         (
-          (DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND 
-           DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date)
+          (DATE(o.closed_at) >= $2::date AND 
+           DATE(o.closed_at) <= $3::date)
           AND
-          (CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) >= $${paramIndex}::time AND
-           CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) <= $${paramIndex + 1}::time)
+          (CAST(o.closed_at AS TIME) >= $${paramIndex}::time AND
+           CAST(o.closed_at AS TIME) <= $${paramIndex + 1}::time)
         )
       `;
       params.push(time_from, time_to);
@@ -450,18 +455,18 @@ class SalesModel {
     const storeResult = await pool.query(storeQuery, [store_id]);
     const timezone = storeResult.rows[0]?.timezone || 'Asia/Jakarta';
 
-    let dateFilter = `DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date`;
+    let dateFilter = `DATE(o.closed_at) >= $2::date AND DATE(o.closed_at) <= $3::date`;
     let params = [store_id, date_from, date_to];
     let paramIndex = 4;
 
     if (time_from && time_to) {
       dateFilter = `
         (
-          (DATE(o.closed_at AT TIME ZONE '${timezone}') >= $2::date AND 
-           DATE(o.closed_at AT TIME ZONE '${timezone}') <= $3::date)
+          (DATE(o.closed_at) >= $2::date AND 
+           DATE(o.closed_at) <= $3::date)
           AND
-          (CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) >= $${paramIndex}::time AND
-           CAST(o.closed_at AT TIME ZONE '${timezone}' AS TIME) <= $${paramIndex + 1}::time)
+          (CAST(o.closed_at AS TIME) >= $${paramIndex}::time AND
+           CAST(o.closed_at AS TIME) <= $${paramIndex + 1}::time)
         )
       `;
       params.push(time_from, time_to);
@@ -547,3 +552,4 @@ class SalesModel {
 }
 
 module.exports = SalesModel;
+
