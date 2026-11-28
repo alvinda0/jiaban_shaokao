@@ -137,8 +137,8 @@ export default function ProfitLossReport({ storeId }: Props) {
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [timeFrom, setTimeFrom] = useState('')
-  const [timeTo, setTimeTo] = useState('')
+  const [timeFrom, setTimeFrom] = useState('00:00')
+  const [timeTo, setTimeTo] = useState('23:59')
 
   // Initialize dates
   useEffect(() => {
@@ -285,24 +285,24 @@ export default function ProfitLossReport({ storeId }: Props) {
           </div>
 
           <div>
-            <label>Jam Dari:</label>
+            <label>Jam Dari (24-jam) *:</label>
             <input
               type="time"
               value={timeFrom}
               onChange={e => setTimeFrom(e.target.value)}
               className={styles.input}
-              placeholder="HH:MM"
+              required
             />
           </div>
 
           <div>
-            <label>Jam Sampai:</label>
+            <label>Jam Sampai (24-jam) *:</label>
             <input
               type="time"
               value={timeTo}
               onChange={e => setTimeTo(e.target.value)}
               className={styles.input}
-              placeholder="HH:MM"
+              required
             />
           </div>
 

@@ -70,8 +70,8 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
       
       setDateFrom(dateString);
       setDateTo(dateString);
-      setTimeFrom('');
-      setTimeTo('');
+      setTimeFrom('00:00'); // Default: 00:00 (24-hour format)
+      setTimeTo('23:59');   // Default: 23:59 (24-hour format)
       setReportData(null);
       setHasSubmitted(false);
     }
@@ -80,6 +80,11 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
   const handleFetchReport = async () => {
     if (!dateFrom || !dateTo) {
       toast.error('Tanggal mulai dan akhir harus diisi');
+      return;
+    }
+
+    if (!timeFrom || !timeTo) {
+      toast.error('Jam mulai dan jam akhir harus diisi');
       return;
     }
 
@@ -93,14 +98,12 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
       setIsLoading(true);
       setHasSubmitted(true);
 
-      // Convert dates: subtract 7 hours to account for UTC+7 timezone
-      // Frontend sends local date, but backend timestamps are UTC
-      // So we subtract 7 hours to get the correct UTC date range
-      const fromDate = new Date(`${dateFrom}T00:00:00`);
+      // Adjust dates: subtract 7 hours for UTC+7 timezone
+      const fromDate = new Date(`${dateFrom}T${timeFrom}`);
       fromDate.setHours(fromDate.getHours() - 7);
       const adjustedDateFrom = fromDate.toISOString().split('T')[0];
 
-      const toDate = new Date(`${dateTo}T23:59:59`);
+      const toDate = new Date(`${dateTo}T${timeTo}`);
       toDate.setHours(toDate.getHours() - 7);
       const adjustedDateTo = toDate.toISOString().split('T')[0];
 
@@ -112,7 +115,7 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
       if (timeFrom) params.time_from = timeFrom;
       if (timeTo) params.time_to = timeTo;
 
-      console.log('📤 Sending to backend:', { dateFrom, dateTo, adjustedDateFrom, adjustedDateTo });
+      console.log('📤 Sending to backend:', { dateFrom, dateTo, timeFrom, timeTo, adjustedDateFrom, adjustedDateTo });
 
       const response = await orderService.getSalesReport(storeId, params);
       setReportData(response.data);
@@ -180,22 +183,24 @@ export function SalesReportModal({ isOpen, storeId, onClose }: SalesReportModalP
               </div>
 
               <div className={styles.filterGroup}>
-                <label>Waktu Mulai (Opsional)</label>
+                <label>Waktu Mulai (24-jam) *</label>
                 <input
                   type="time"
                   value={timeFrom}
                   onChange={(e) => setTimeFrom(e.target.value)}
                   className={styles.input}
+                  required
                 />
               </div>
 
               <div className={styles.filterGroup}>
-                <label>Waktu Akhir (Opsional)</label>
+                <label>Waktu Akhir (24-jam) *</label>
                 <input
                   type="time"
                   value={timeTo}
                   onChange={(e) => setTimeTo(e.target.value)}
                   className={styles.input}
+                  required
                 />
               </div>
             </div>
